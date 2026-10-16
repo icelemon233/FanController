@@ -35,12 +35,12 @@ export function rpmFor(channel: Channel, snapshot: Snapshot): number | null {
   return snapshot.Snapshot.Sensors.find(s=>s.Id===id && s.Kind==='Fan')?.Value??null;
 }
 export function validateProfile(profile: FanProfile): string | null {
-  if(!Number.isFinite(profile.Minimum) || profile.Minimum<20 || profile.Minimum>100)return '最低输出需要在 20–100% 之间';
+  if(!Number.isFinite(profile.Minimum) || profile.Minimum<20 || profile.Minimum>100)return '请将最低输出设为 20–100%';
   if(profile.Mode!==2)return null;
-  if(profile.Points.length<2 || profile.Points.length>12)return '曲线需要 2–12 个节点';
+  if(profile.Points.length<2 || profile.Points.length>12)return '曲线需包含 2–12 个节点';
   for(let i=0;i<profile.Points.length;i++){
-    const p=profile.Points[i];if(!Number.isFinite(p.Temperature)||!Number.isFinite(p.Duty)||p.Temperature<20||p.Temperature>110||p.Duty<0||p.Duty>100)return '温度需在 20–110°C，输出需在 0–100% 之间';
-    if(i>0 && (p.Temperature<=profile.Points[i-1].Temperature||p.Duty<profile.Points[i-1].Duty))return '温度必须递增，输出不能随温度升高而下降';
+    const p=profile.Points[i];if(!Number.isFinite(p.Temperature)||!Number.isFinite(p.Duty)||p.Temperature<20||p.Temperature>110||p.Duty<0||p.Duty>100)return '请将节点温度设为 20–110°C，输出设为 0–100%';
+    if(i>0 && (p.Temperature<=profile.Points[i-1].Temperature||p.Duty<profile.Points[i-1].Duty))return '后一节点的温度须更高，输出不能低于前一节点';
   }
   return null;
 }

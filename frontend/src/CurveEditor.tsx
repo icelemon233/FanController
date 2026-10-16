@@ -10,7 +10,7 @@ export default function CurveEditor({ points, minimum, onChange }: {points: Curv
   const update=(i:number,key:keyof CurvePoint,value:number|null)=>{if(value===null)return;onChange(points.map((p,j)=>j===i?{...p,[key]:value}:p));};
   return <Flex vertical gap={12}>
     <div className="curve-canvas" style={{background:token.colorFillQuaternary,borderColor:token.colorBorderSecondary}}>
-      <svg ref={svg} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="温度与风扇输出曲线，可拖动节点"
+      <svg ref={svg} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="风扇输出曲线，拖动节点可调整温度和输出"
         onPointerMove={event=>{
           if(drag.current===null||!svg.current)return;const i=drag.current;const box=svg.current.getBoundingClientRect();
           const px=(event.clientX-box.left)/box.width*width,py=(event.clientY-box.top)/box.height*height;
@@ -26,11 +26,11 @@ export default function CurveEditor({ points, minimum, onChange }: {points: Curv
           {points.map((p,i)=><circle key={i} cx={x(p.Temperature)} cy={y(Math.max(minimum,p.Duty))} r={6} fill={token.colorBgContainer} stroke={token.colorPrimary} strokeWidth="2.5" style={{cursor:'grab',touchAction:'none'}} onPointerDown={event=>{drag.current=i;event.currentTarget.setPointerCapture(event.pointerId);}}/>)}</>}
       </svg>
     </div>
-    <Flex justify="space-between" align="center"><Typography.Text type="secondary">拖动节点，或直接编辑数值</Typography.Text><Tag variant="filled">最低输出 {minimum}%</Tag></Flex>
+    <Flex justify="space-between" align="center"><Typography.Text type="secondary">拖动节点或修改下表数值</Typography.Text><Tag variant="filled">最低输出 {minimum}%</Tag></Flex>
     <Table size="small" pagination={false} rowKey="index" dataSource={points.map((p,index)=>({...p,index}))} columns={[
       {title:'节点',dataIndex:'index',width:70,render:(i:number)=>i+1},
-      {title:'温度',dataIndex:'Temperature',render:(value:number,row:CurvePoint&{index:number})=><InputNumber aria-label={`节点${row.index+1}温度`} value={value} min={20} max={110} precision={0} suffix="°C" onChange={v=>update(row.index,'Temperature',v)}/>},
-      {title:'输出',dataIndex:'Duty',render:(value:number,row:CurvePoint&{index:number})=><InputNumber aria-label={`节点${row.index+1}输出`} value={value} min={0} max={100} precision={0} suffix="%" onChange={v=>update(row.index,'Duty',v)}/>},
+      {title:'温度',dataIndex:'Temperature',render:(value:number,row:CurvePoint&{index:number})=><InputNumber aria-label={`节点 ${row.index+1} 的温度`} value={value} min={20} max={110} precision={0} suffix="°C" onChange={v=>update(row.index,'Temperature',v)}/>},
+      {title:'风扇输出',dataIndex:'Duty',render:(value:number,row:CurvePoint&{index:number})=><InputNumber aria-label={`节点 ${row.index+1} 的输出`} value={value} min={0} max={100} precision={0} suffix="%" onChange={v=>update(row.index,'Duty',v)}/>},
     ]}/>
   </Flex>;
 }

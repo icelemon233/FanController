@@ -46,7 +46,7 @@ namespace CinnaFanCon
             writer=new StreamWriter(pipe,new UTF8Encoding(false),65536,true) {AutoFlush=true};
             reader=new StreamReader(pipe,Encoding.UTF8,false,65536,true);
             try {store=demo?new ProfileStore():ProfileStore.Load();}
-            catch(Exception e) {store=new ProfileStore();saveError="配置读取失败："+e.Message;}
+            catch(Exception e) {store=new ProfileStore();saveError="无法读取已保存的风扇设置："+e.Message;}
         }
         private void Send(WireMessage message)
         {
@@ -70,7 +70,7 @@ namespace CinnaFanCon
                     else store.SaveMany(profiles);
                     saveError=null;
                 }
-                catch(Exception e) {saveError="控制已应用，但设置保存失败："+e.Message;}
+                catch(Exception e) {saveError="设置已生效，但未能保存到此电脑："+e.Message;}
             }
         }
         private void Publish(AppSnapshot frame)
@@ -127,8 +127,8 @@ namespace CinnaFanCon
         {
             Save(result.Applied);
             bool success=result.Applied.Count>0 && result.Errors.Count==0;
-            string message=result.Applied.Count==0?"暂无可以自动控制的风扇，请先完成主板支持或查看设备状态。":result.Mode+"模式已开启，"+result.Applied.Count+" 组风扇自动跟随温度。";
-            if(result.Errors.Count>0)message="部分风扇应用失败："+String.Join("；",result.Errors.Select(e=>e.Name+"："+e.Reason));
+            string message=result.Applied.Count==0?"没有可自动调节的风扇，请查看设备状态；CPU 和机箱风扇可能需要先启用主板访问。":"已将 "+result.Applied.Count+" 组风扇设为"+result.Mode+"模式。";
+            if(result.Errors.Count>0)message="以下风扇未能应用设置："+String.Join("；",result.Errors.Select(e=>e.Name+"："+e.Reason));
             Reply(result.Id,saveError??message,success,result.Applied.Count,result.Skipped.Count);
         }
         private void ReadCommands()
@@ -152,11 +152,11 @@ namespace CinnaFanCon
         }
         private void Execute(WireMessage command)
         {
-            if(stopping.WaitOne(0))throw new InvalidOperationException("正在恢复风扇原设置，请稍后关闭应用。");
+            if(stopping.WaitOne(0))throw new InvalidOperationException("正在恢复风扇原设置，请等待完成。");
             if(command.Id==null || command.Id.Length>100)throw new InvalidDataException("请求编号无效。");
             if(command.Action=="smart")
             {
-                if(!CoolingPlanner.ValidMode(command.Mode))throw new ArgumentException("散热模式无效。");
+                if(!CoolingPlanner.ValidMode(command.Mode))throw new ArgumentException("风扇模式无效，请重新选择。");
                 List<FanProfile> saved;lock(stateLock)saved=store.Profiles.Select(p=>p.Clone()).ToList();
                 if(!demo)engine.EnqueueSmart(command.Mode,saved,command.Id);
                 else
@@ -175,7 +175,7 @@ namespace CinnaFanCon
             }
             else if(command.Action=="apply")
             {
-                var profile=command.Profile;if(profile==null)throw new ArgumentException("没有风扇设置。");
+                var profile=command.Profile;if(profile==null)throw new ArgumentException("未收到风扇设置，请重新应用。");
                 if(profile.Excluded==true)profile.Mode=FanMode.Hardware;
                 string error=profile.Validate();if(error!=null)throw new ArgumentException(error);
                 if(!demo)engine.Enqueue("apply",profile,command.Id);
@@ -183,7 +183,7 @@ namespace CinnaFanCon
                 {
                     lock(stateLock)
                     {
-                        var session=demoSessions.FirstOrDefault(s=>s.Port.Id==profile.Id);if(session==null)throw new ArgumentException("风扇已不可用。");
+                        var session=demoSessions.FirstOrDefault(s=>s.Port.Id==profile.Id);if(session==null)throw new ArgumentException("未找到这组风扇，请重新检测。");
                         session.Apply(profile);session.Tick(latest.Sensors,DateTime.UtcNow);Save(new[]{profile});demoMode="自定义";PublishDemo();Reply(command.Id,"设置已应用。",true);
                     }
                 }
@@ -193,10 +193,10 @@ namespace CinnaFanCon
                 if(!demo)engine.Enqueue(command.Action=="release"?"release":"rescan",null,command.Id);
                 else
                 {
-                    lock(stateLock){foreach(var session in demoSessions)session.Release();demoMode=null;PublishDemo();Reply(command.Id,command.Action=="release"?"已恢复所有风扇原来的设置。":"设备检测完成。",true);}
+                    lock(stateLock){foreach(var session in demoSessions)session.Release();demoMode=null;PublishDemo();Reply(command.Id,command.Action=="release"?"已恢复风扇原设置。":"设备检测完成。",true);}
                 }
             }
-            else throw new ArgumentException("不支持的风扇操作。");
+            else throw new ArgumentException("不支持此风扇操作。");
         }
     }
     public static class WorkerProgram

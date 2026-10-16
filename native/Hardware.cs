@@ -84,7 +84,7 @@ namespace CinnaFanCon
             }
             catch(Exception e)
             {
-                initialNotices.Add("AMD 显卡接口："+e.Message);
+                initialNotices.Add("无法启用 AMD 显卡接口："+e.Message);
                 if(adlx!=null) { try { adlx.Dispose(); } catch { } adlx=null; }
             }
             try
@@ -93,9 +93,9 @@ namespace CinnaFanCon
                     IsMemoryEnabled=false,IsStorageEnabled=false,IsNetworkEnabled=false,IsControllerEnabled=false };
                 computer.Open();
             }
-            catch(Exception e) { initialNotices.Add("主板硬件接口："+e.Message); }
-            if(!Administrator) initialNotices.Add("CPU 温度和主板风扇可能需要授权。请在主页完成主板支持。");
-            if(!PawnIoInstalled) initialNotices.Add("主板硬件组件尚未安装。请在主页完成主板支持。");
+            catch(Exception e) { initialNotices.Add("无法启用硬件监测接口："+e.Message); }
+            if(!Administrator) initialNotices.Add("读取 CPU 温度和控制主板风扇可能需要管理员权限。请在概览中点击“启用主板访问”。");
+            if(!PawnIoInstalled) initialNotices.Add("未安装 PawnIO 硬件组件。请在概览中点击“启用主板访问”。");
             Poll(); // Activate sensors before discovering control channels.
             if(computer!=null)
                 foreach(var hardware in computer.Hardware) Discover(hardware);
@@ -118,7 +118,7 @@ namespace CinnaFanCon
                         var port=new LhmFanPort(sensor,Group(hardware));
                         if(Numbers.Finite(port.Minimum) && Numbers.Finite(port.Maximum) && port.Minimum>=0 && port.Maximum<=100 && port.Maximum>port.Minimum)
                             ports.Add(port);
-                        else initialNotices.Add(hardware.Name+" / "+sensor.Name+"：控制范围无效，已跳过此通道。");
+                        else initialNotices.Add(hardware.Name+" / "+sensor.Name+"：硬件返回的输出范围无效，已跳过这组风扇。");
                     }
             foreach(var sub in hardware.SubHardware) Discover(sub);
         }
@@ -150,7 +150,7 @@ namespace CinnaFanCon
             if(computer!=null)
             {
                 try { foreach(var hardware in computer.Hardware) Read(hardware,frame.Sensors,frame.Notices); }
-                catch(Exception e) { frame.Notices.Add("硬件读取："+e.Message); }
+                catch(Exception e) { frame.Notices.Add("硬件读数获取失败："+e.Message); }
             }
             if(adlx!=null)
             {
@@ -233,7 +233,7 @@ namespace CinnaFanCon
             catch(Exception e)
             {
                 string error=e.Message;
-                try { session.Release(); session.Status="控制失败 · 已交还硬件"; }
+                try { session.Release(); session.Status="调节失败 · 已恢复原设置"; }
                 catch(Exception restore) { error+=" 恢复失败："+restore.Message; session.Profile=null; session.Status="恢复失败 · 请重试"; }
                 session.Error=error;
             }
@@ -259,12 +259,12 @@ namespace CinnaFanCon
                             ReleaseAll();
                             bool ok=sessions.All(s=>!s.Owned);
                             coolingMode=null;
-                            Notify(null,ok?"已恢复所有风扇原来的设置。":"部分风扇恢复失败，请在高级设置中重试。",ok,command.RequestId);
+                            Notify(null,ok?"已恢复风扇原设置。":"部分风扇未能恢复。请在“风扇设置”中选择“恢复原设置”并应用。",ok,command.RequestId);
                         }
                         else if(command.Kind=="rescan")
                         {
                             ReleaseAll();
-                            if(sessions.Any(s=>s.Owned)) { Notify(null,"请先恢复仍在控制的通道，然后重新检测。",false,command.RequestId); continue; }
+                            if(sessions.Any(s=>s.Owned)) { Notify(null,"部分风扇未能恢复，请先点击“恢复原设置”重试，再重新检测。",false,command.RequestId); continue; }
                             backend.Dispose(); sessions.Clear();
                             backend=new HardwareBackend(); backend.Open();
                             foreach(var port in backend.Ports) sessions.Add(new ControlSession(port));
@@ -296,7 +296,7 @@ namespace CinnaFanCon
                         else if(command.Kind=="apply")
                         {
                             var session=sessions.FirstOrDefault(s=>s.Port.Id==command.Profile.Id);
-                            if(session==null) { Notify(command.Profile,"风扇通道已不可用，请重新检测。",false,command.RequestId); continue; }
+                            if(session==null) { Notify(command.Profile,"未找到这组风扇，请重新检测。",false,command.RequestId); continue; }
                             try
                             {
                                 session.Apply(command.Profile); Tick(session,frame);coolingMode="自定义";
@@ -317,7 +317,7 @@ namespace CinnaFanCon
                       // Retain the backend and its original fan snapshots so restoration can be retried.
                       foreach(var session in sessions.Where(s=>s.Owned)) session.Profile=null;
                       EngineCommand discarded;while(commands.TryDequeue(out discarded)) { }
-                      Notify(null,"部分通道未能恢复，应用保持运行。请重试“交还全部”。",false);
+                      Notify(null,"部分风扇未能恢复，应用将继续运行。请点击“恢复原设置”重试。",false);
                       stopping=false;
                       continue;
                   }
@@ -326,9 +326,9 @@ namespace CinnaFanCon
             }
             catch(Exception e)
             {
-                Notify(null,"硬件服务停止："+e.Message,false);
+                Notify(null,"风扇服务已停止："+e.Message,false);
                 var handler=Updated;
-                if(handler!=null) handler(new AppSnapshot { Time=DateTime.UtcNow,Notices=new List<string> { "硬件服务停止："+e.Message },Channels=sessions.Select(s=>s.View()).ToList() });
+                if(handler!=null) handler(new AppSnapshot { Time=DateTime.UtcNow,Notices=new List<string> { "风扇服务已停止："+e.Message },Channels=sessions.Select(s=>s.View()).ToList() });
             }
             finally
             {

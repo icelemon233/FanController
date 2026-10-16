@@ -41,7 +41,7 @@ namespace CinnaFanCon
 
         internal static T V<T>(IntPtr obj,int slot) where T:class
         {
-            if(obj==IntPtr.Zero) throw new InvalidOperationException("ADLX 接口为空。");
+            if(obj==IntPtr.Zero) throw new InvalidOperationException("AMD 驱动未返回所需的 ADLX 接口。");
             return Marshal.GetDelegateForFunctionPointer(Marshal.ReadIntPtr(Marshal.ReadIntPtr(obj),slot*IntPtr.Size),typeof(T)) as T;
         }
         internal static void Check(int result,string operation)
@@ -53,11 +53,11 @@ namespace CinnaFanCon
         public void Open()
         {
             string path=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"amdadlx64.dll");
-            if(!File.Exists(path)) { Notices.Add("未找到 AMD ADLX 驱动接口；AMD 显卡请安装完整的 AMD 显卡驱动。"); return; }
+            if(!File.Exists(path)) { Notices.Add("未找到 AMD ADLX 接口。使用 AMD 显卡时，请检查是否已安装完整显卡驱动。"); return; }
             library=LoadLibraryEx(path,IntPtr.Zero,0x00000800); // LOAD_LIBRARY_SEARCH_SYSTEM32
             if(library==IntPtr.Zero) throw new InvalidOperationException("无法加载 AMD 驱动接口："+Marshal.GetLastWin32Error());
             IntPtr query=GetProcAddress(library,"ADLXQueryFullVersion"), init=GetProcAddress(library,"ADLXInitialize");
-            if(query==IntPtr.Zero || init==IntPtr.Zero) throw new InvalidOperationException("AMD 驱动没有 ADLX 初始化接口。");
+            if(query==IntPtr.Zero || init==IntPtr.Zero) throw new InvalidOperationException("AMD 驱动未提供 ADLX 初始化接口。");
             ulong version;
             Check(((QueryVersion)Marshal.GetDelegateForFunctionPointer(query,typeof(QueryVersion)))(out version),"读取 ADLX 版本");
             Check(((Initialize)Marshal.GetDelegateForFunctionPointer(init,typeof(Initialize)))(version,out system),"初始化 ADLX");
@@ -90,9 +90,9 @@ namespace CinnaFanCon
                         }
                         var port=new AdlxFanPort(gpu,fan,performance,name,unique);
                         ports.Add(port); gpu=IntPtr.Zero; fan=IntPtr.Zero;
-                        if(!port.Controllable) Notices.Add(name+"：驱动未开放手动风扇控制，保留温度和转速监测。");
+                        if(!port.Controllable) Notices.Add(name+"：驱动未提供风扇调速接口，仍可查看可用的温度和转速读数。");
                     }
-                    catch(Exception e) { Notices.Add("AMD 显卡检测："+e.Message); }
+                    catch(Exception e) { Notices.Add("AMD 显卡检测失败："+e.Message); }
                     finally { Release(ref fan); Release(ref gpu); }
                 }
             }
@@ -157,7 +157,7 @@ namespace CinnaFanCon
             {
                 AdlxBackend.Check(AdlxBackend.V<AdlxBackend.GetPtr>(fan,4)(fan,out list),"读取原风扇曲线");
                 uint count=AdlxBackend.V<AdlxBackend.SizeFn>(list,3)(list);
-                if(count<2 || count>16) throw new InvalidOperationException("显卡返回的风扇曲线节点数无效。");
+                if(count<2 || count>16) throw new InvalidOperationException("显卡返回的风扇曲线节点数超出支持范围。");
                 var result=new List<CurvePoint>();
                 for(uint i=0;i<count;i++)
                 {
@@ -184,7 +184,7 @@ namespace CinnaFanCon
             {
                 AdlxBackend.Check(AdlxBackend.V<AdlxBackend.GetPtr>(fan,5)(fan,out list),"创建风扇曲线");
                 uint count=AdlxBackend.V<AdlxBackend.SizeFn>(list,3)(list);
-                if(count!=points.Count) throw new InvalidOperationException("显卡的风扇节点数发生变化。");
+                if(count!=points.Count) throw new InvalidOperationException("显卡风扇曲线的节点数已变化，请重新检测设备。");
                 for(uint i=0;i<count;i++)
                 {
                     IntPtr state=IntPtr.Zero;
@@ -206,7 +206,7 @@ namespace CinnaFanCon
 
         public void Write(double value)
         {
-            if(!Controllable) throw new InvalidOperationException("此显卡未开放风扇调速。");
+            if(!Controllable) throw new InvalidOperationException("此显卡未提供风扇调速接口。");
             if(original==null)
             {
                 var saved=ReadStates();

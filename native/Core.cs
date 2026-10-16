@@ -46,21 +46,21 @@ namespace CinnaFanCon
 
         public string Validate()
         {
-            if (String.IsNullOrWhiteSpace(Id)) return "没有选择风扇通道。";
-            if (!Numbers.Finite(Minimum) || Minimum < 20 || Minimum > 100) return "最低输出需要在 20–100% 之间。";
-            if (!Numbers.Finite(Manual) || Manual < 0 || Manual > 100) return "手动输出需要在 0–100% 之间。";
-            if (Mode != FanMode.Hardware && Mode != FanMode.Manual && Mode != FanMode.Curve) return "控制模式无效。";
+            if (String.IsNullOrWhiteSpace(Id)) return "请先选择一组风扇。";
+            if (!Numbers.Finite(Minimum) || Minimum < 20 || Minimum > 100) return "请将最低输出设为 20–100%。";
+            if (!Numbers.Finite(Manual) || Manual < 0 || Manual > 100) return "请将固定输出设为 0–100%。";
+            if (Mode != FanMode.Hardware && Mode != FanMode.Manual && Mode != FanMode.Curve) return "控制方式无效，请重新选择。";
             if (Mode != FanMode.Curve) return null;
-            if (Points == null || Points.Count < 2 || Points.Count > 12) return "温度曲线需要 2–12 个节点。";
+            if (Points == null || Points.Count < 2 || Points.Count > 12) return "曲线需包含 2–12 个节点。";
             for (int i=0; i<Points.Count; i++)
             {
                 CurvePoint p = Points[i];
                 if (p == null || !Numbers.Finite(p.Temperature) || !Numbers.Finite(p.Duty) || p.Temperature < 20 || p.Temperature > 110 || p.Duty < 0 || p.Duty > 100)
-                    return "曲线温度需要在 20–110°C、输出在 0–100% 之间。";
+                    return "请将节点温度设为 20–110°C，输出设为 0–100%。";
                 if (i > 0 && (p.Temperature <= Points[i-1].Temperature || p.Duty < Points[i-1].Duty))
-                    return "温度必须递增，输出不能随温度升高而下降。";
+                    return "后一节点的温度须更高，输出不能低于前一节点。";
             }
-            if (Mode == FanMode.Curve && String.IsNullOrWhiteSpace(Source)) return "请选择曲线的温度来源。";
+            if (Mode == FanMode.Curve && String.IsNullOrWhiteSpace(Source)) return "请选择温度来源。";
             return null;
         }
 
@@ -166,7 +166,7 @@ namespace CinnaFanCon
         public FanProfile Profile;
         public bool Owned;
         public double? LastTarget;
-        public string Status = "硬件自动控制";
+        public string Status = "未接管";
         public string Error;
         private double? heldTemperature;
         private DateTime lastWrite = DateTime.MinValue;
@@ -177,7 +177,7 @@ namespace CinnaFanCon
         {
             string error=profile.Validate();
             if(error!=null) throw new ArgumentException(error);
-            if(profile.Id!=Port.Id) throw new ArgumentException("配置与风扇通道不匹配。");
+            if(profile.Id!=Port.Id) throw new ArgumentException("设置与风扇不匹配，请重新打开这组风扇的设置。");
             if(profile.Mode==FanMode.Hardware) { Release(); return; }
             Profile=profile.Clone(); heldTemperature=null; LastTarget=null; Error=null;
         }
@@ -191,13 +191,13 @@ namespace CinnaFanCon
             bool missing=!safety.HasValue || (Profile.Mode==FanMode.Curve && !source.HasValue);
             bool emergency=overheat || missing;
             double target;
-            if(emergency) { target=Port.Maximum; Status=overheat ? "高温保护 · 全速" : "温度不可用 · 全速保护"; }
-            else if(Profile.Mode==FanMode.Manual) { target=Profile.Manual; Status="手动控制"; }
+            if(emergency) { target=Port.Maximum; Status=overheat ? "高温保护 · 最高输出" : "温度不可用 · 最高输出保护"; }
+            else if(Profile.Mode==FanMode.Manual) { target=Profile.Manual; Status="固定输出"; }
             else
             {
                 double t=source.Value;
                 if(!heldTemperature.HasValue || t>=heldTemperature.Value || heldTemperature.Value-t>=3) heldTemperature=t;
-                target=Profile.Evaluate(heldTemperature.Value); Status="温度曲线";
+                target=Profile.Evaluate(heldTemperature.Value); Status="随温度调节";
             }
             target=Numbers.Clamp(Math.Max(Profile.Minimum,target),Port.Minimum,Port.Maximum);
             bool descending=!emergency && LastTarget.HasValue && target<LastTarget.Value;
@@ -220,7 +220,7 @@ namespace CinnaFanCon
         public void Release()
         {
             if(Owned) Port.Restore();
-            Owned=false; Profile=null; LastTarget=null; heldTemperature=null; Error=null; Status="硬件自动控制";
+            Owned=false; Profile=null; LastTarget=null; heldTemperature=null; Error=null; Status="未接管";
         }
 
         public ChannelView View()
@@ -264,7 +264,7 @@ namespace CinnaFanCon
             using(var stream=File.OpenRead(path))
             {
                 var store=(ProfileStore)new DataContractJsonSerializer(typeof(ProfileStore)).ReadObject(stream);
-                if(store==null || store.Profiles==null) throw new InvalidDataException("配置文件内容为空。");
+                if(store==null || store.Profiles==null) throw new InvalidDataException("风扇配置文件缺少有效设置。");
                 return store;
             }
         }

@@ -35,7 +35,7 @@ namespace CinnaFanCon
         }
         public static WireMessage Decode(string json)
         {
-            if(json==null || json.Length>65536) throw new InvalidDataException("消息大小无效。");
+            if(json==null || json.Length>65536) throw new InvalidDataException("收到空消息或消息过长，无法处理。");
             using(var memory=new MemoryStream(Encoding.UTF8.GetBytes(json))) return (WireMessage)new DataContractJsonSerializer(typeof(WireMessage)).ReadObject(memory);
         }
     }
@@ -53,7 +53,7 @@ namespace CinnaFanCon
             for(int i=0;i<4;i++)
             {
                 string id="demo/"+i;string group=i==3?"GPU":"主板";
-                frame.Channels.Add(new ChannelView {Id=id,Name=names[i],Group=group,Device=i==3?frame.Gpu:frame.Board,DefaultRpmId=id+"/rpm",Status="硬件自动控制"});
+                frame.Channels.Add(new ChannelView {Id=id,Name=names[i],Group=group,Device=i==3?frame.Gpu:frame.Board,DefaultRpmId=id+"/rpm",Status="未接管"});
                 frame.Sensors.Add(new SensorReading {Id=id+"/rpm",Name=names[i],Device=i==3?frame.Gpu:frame.Board,Group=group,Kind="Fan",Value=rpm[i],Time=now});
             }
             return frame;

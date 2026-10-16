@@ -14,7 +14,7 @@ export function subscribe(listener:(event:HostEvent)=>void){listeners.add(listen
 export function send(action:string, extras:Partial<Command>={}):Promise<Reply>{
   const Id=`ui-${++counter}`;const command:Command={Type:'command',Id,Action:action,...extras};
   if(!native)return demoCommand(command);
-  return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{pending.delete(Id);reject(new Error('操作仍未完成，请查看风扇状态后再试'));},action==='enableMotherboard'?180000:20000);pending.set(Id,{resolve,reject,timer});native.postMessage(command);});
+  return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{pending.delete(Id);reject(new Error('尚未收到操作结果，请查看风扇状态后再试'));},action==='enableMotherboard'?180000:20000);pending.set(Id,{resolve,reject,timer});native.postMessage(command);});
 }
 export function windowAction(action:'minimize'|'maximize'|'close'|'drag'){native?.postMessage({Type:'command',Id:'',Action:action});}
 
@@ -23,16 +23,16 @@ const demo:Snapshot={Type:'snapshot',Snapshot:{Demo:true,Administrator:true,Pawn
 demo.Snapshot.Sensors=[['cpu','CPU 核心','CPU',48],['gpu','GPU 核心','GPU',54],['hotspot','GPU 热点','GPU',65]].map(([Id,Name,Group,Value])=>({Id:String(Id),Name:String(Name),Group:String(Group),Device:Group==='CPU'?demo.Snapshot.Cpu:demo.Snapshot.Gpu,Kind:'Temperature',Value:Number(Value),Time:now()}));
 ['CPU 散热风扇','机箱进风','机箱排风','显卡风扇'].forEach((Name,i)=>{
   const Id=`demo/${i}`,Group=i===3?'GPU':'主板';
-  demo.Snapshot.Channels.push({Id,Name,Group,Device:i===3?demo.Snapshot.Gpu:demo.Snapshot.Board,DefaultRpmId:`${Id}/rpm`,Status:'硬件自动控制',Mode:0,Target:null,Owned:false,Error:null});
+  demo.Snapshot.Channels.push({Id,Name,Group,Device:i===3?demo.Snapshot.Gpu:demo.Snapshot.Board,DefaultRpmId:`${Id}/rpm`,Status:'未接管',Mode:0,Target:null,Owned:false,Error:null});
   demo.Snapshot.Sensors.push({Id:`${Id}/rpm`,Name,Group,Device:i===3?demo.Snapshot.Gpu:demo.Snapshot.Board,Kind:'Fan',Value:[1120,820,940,1510][i],Time:now()});
-  demo.Recommendations.push({Id,Role:i===3?'GPU':i===0?'CPU':'Case',Source:i===3?'group/gpu':i===0?'group/cpu':'group/mix',SourceLabel:i===3?'跟随显卡温度':i===0?'跟随 CPU 温度':'跟随 CPU / GPU 中更高的温度',Eligible:true,Reason:null});
+  demo.Recommendations.push({Id,Role:i===3?'GPU':i===0?'CPU':'Case',Source:i===3?'group/gpu':i===0?'group/cpu':'group/mix',SourceLabel:i===3?'GPU 温度（优先核心）':i===0?'CPU 最高温度':'CPU 与 GPU 的较高温度',Eligible:true,Reason:null});
 });
 function demoSnapshot(){demo.Snapshot.Time=now();demo.Snapshot.Sensors.forEach(s=>s.Time=demo.Snapshot.Time);emit(structuredClone(demo));}
 function demoApply(profile:FanProfile){
-  const channel=demo.Snapshot.Channels.find(c=>c.Id===profile.Id);if(!channel)throw new Error('风扇不存在');
-  channel.Mode=profile.Excluded?0:profile.Mode;channel.Owned=channel.Mode!==0;channel.Target=channel.Owned?Math.max(profile.Minimum,profile.Mode===1?profile.Manual:55):null;channel.Status=channel.Owned?'演示 · 自动调节':'硬件自动控制';
+  const channel=demo.Snapshot.Channels.find(c=>c.Id===profile.Id);if(!channel)throw new Error('未找到这组风扇，请重新检测');
+  channel.Mode=profile.Excluded?0:profile.Mode;channel.Owned=channel.Mode!==0;channel.Target=channel.Owned?Math.max(profile.Minimum,profile.Mode===1?profile.Manual:55):null;channel.Status=channel.Owned?channel.Mode===1?'固定输出':'随温度调节':'未接管';
   demo.Profiles=demo.Profiles.filter(p=>p.Id!==profile.Id);demo.Profiles.push(structuredClone({...profile,Mode:channel.Mode}));
-  const recommendation=demo.Recommendations.find(r=>r.Id===profile.Id)!;recommendation.Eligible=!profile.Excluded;recommendation.Reason=profile.Excluded?'已设为保留原设置':null;
+  const recommendation=demo.Recommendations.find(r=>r.Id===profile.Id)!;recommendation.Eligible=!profile.Excluded;recommendation.Reason=profile.Excluded?'已关闭“跟随主页模式”':null;
 }
 async function demoCommand(command:Command):Promise<Reply>{
   await new Promise(resolve=>setTimeout(resolve,180));
@@ -41,12 +41,12 @@ async function demoCommand(command:Command):Promise<Reply>{
   if(command.Action==='smart'){
     const mode=command.Mode as CoolingMode;let count=0;
     demo.Snapshot.Channels.forEach(c=>{const rec=demo.Recommendations.find(r=>r.Id===c.Id)!;if(!rec.Eligible)return;const saved=demo.Profiles.find(p=>p.Id===c.Id);demoApply({Id:c.Id,Name:saved?.Name??c.Name,Mode:2,Source:rec.Source,RpmId:saved?.RpmId??c.DefaultRpmId,Minimum:Math.max(30,saved?.Minimum??30),Manual:50,Points:preset(mode)});count++;});
-    demo.Snapshot.CoolingMode=mode;reply.Message=`${mode}模式已开启，${count} 组风扇自动跟随温度`;reply.Applied=count;
+    demo.Snapshot.CoolingMode=mode;reply.Message=`已将 ${count} 组风扇设为${mode}模式`;reply.Applied=count;
   } else if(command.Action==='release'){
-    demo.Snapshot.Channels.forEach(c=>{c.Owned=false;c.Target=null;c.Mode=0;c.Status='硬件自动控制';});demo.Snapshot.CoolingMode=null;reply.Message='已恢复所有风扇原来的设置';
+    demo.Snapshot.Channels.forEach(c=>{c.Owned=false;c.Target=null;c.Mode=0;c.Status='未接管';});demo.Snapshot.CoolingMode=null;reply.Message='已恢复风扇原设置';
   } else if(command.Action==='apply' && command.Profile){demoApply(command.Profile);demo.Snapshot.CoolingMode='自定义';reply.Message='设置已应用';}
-  else if(command.Action==='rescan')reply.Message='演示设备已就绪';
-  else if(command.Action==='enableMotherboard')reply.Message='演示模式无需安装组件';
+  else if(command.Action==='rescan')reply.Message='演示设备检测完成';
+  else if(command.Action==='enableMotherboard')reply.Message='演示模式使用模拟风扇，无需安装硬件组件';
   demoSnapshot();return reply;
 }
 if(!native)setInterval(demoSnapshot,1000);

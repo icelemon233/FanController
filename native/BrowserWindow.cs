@@ -35,7 +35,7 @@ namespace CinnaFanCon
         public BrowserWindow(bool demonstration,string capture,string smoke)
         {
             demo=demonstration;capturePath=capture;smokeReport=smoke;
-            Title="cinna-fanCon · 智能散热";Width=1280;Height=860;MinWidth=1040;MinHeight=740;
+            Title="cinna-fanCon · 风扇控制";Width=1280;Height=860;MinWidth=1040;MinHeight=740;
             if(capture==null){var area=SystemParameters.WorkArea;Width=Math.Min(1280,area.Width-32);Height=Math.Min(860,area.Height-32);MinWidth=Math.Min(920,area.Width-16);MinHeight=Math.Min(660,area.Height-16);}
             WindowStyle=WindowStyle.None;ResizeMode=ResizeMode.CanResize;WindowStartupLocation=WindowStartupLocation.CenterScreen;
             Background=new SolidColorBrush(Color.FromRgb(245,247,251));
@@ -46,10 +46,10 @@ namespace CinnaFanCon
             Closing+=OnClosing;
             if(capturePath==null)
             {
-                tray=new Forms.NotifyIcon {Icon=System.Drawing.SystemIcons.Application,Text="cinna-fanCon · 智能散热",Visible=true};
+                tray=new Forms.NotifyIcon {Icon=System.Drawing.SystemIcons.Application,Text="cinna-fanCon · 风扇控制",Visible=true};
                 var menu=new Forms.ContextMenuStrip();menu.Items.Add("打开 cinna-fanCon",null,delegate{Dispatcher.BeginInvoke(new Action(Restore));});
                 menu.Items.Add("恢复所有风扇原设置",null,delegate{if(worker!=null)worker.Send(new WireMessage {Type="command",Id="tray-release",Action="release"});});
-                menu.Items.Add("恢复风扇并退出",null,delegate{Dispatcher.BeginInvoke(new Action(()=>Close()));});
+                menu.Items.Add("恢复原设置并退出",null,delegate{Dispatcher.BeginInvoke(new Action(()=>Close()));});
                 tray.ContextMenuStrip=menu;tray.DoubleClick+=delegate{Dispatcher.BeginInvoke(new Action(Restore));};
                 StateChanged+=delegate{if(WindowState==WindowState.Minimized)Hide();};
             }
@@ -90,7 +90,7 @@ namespace CinnaFanCon
             catch(Exception e)
             {
                 if(capturePath!=null){FailCapture(e);return;}
-                MessageBox.Show(this,"界面启动失败："+e.Message+"\n\n请确认 Microsoft Edge WebView2 Runtime 已安装。","cinna-fanCon",MessageBoxButton.OK,MessageBoxImage.Error);Close();
+                MessageBox.Show(this,"界面启动失败："+e.Message+"\n\n请确认已安装 Microsoft Edge WebView2 Runtime，并完整解压了应用文件。","cinna-fanCon",MessageBoxButton.OK,MessageBoxImage.Error);Close();
             }
         }
         private static bool Trusted(string address)
@@ -138,8 +138,8 @@ namespace CinnaFanCon
                 else if(command.Action=="enableMotherboard")await EnableMotherboard(command.Id);
                 else if(command.Action=="smart"||command.Action=="release"||command.Action=="apply"||command.Action=="rescan")
                 {
-                    if(setupPending){Reply(command.Id,"正在准备主板支持，请等待完成。",false);return;}
-                    if(worker==null||!worker.Send(command))Reply(command.Id,"风扇服务尚未连接，请稍后再试。",false);
+                    if(setupPending){Reply(command.Id,"正在设置主板访问，请等待安装和授权完成。",false);return;}
+                    if(worker==null||!worker.Send(command))Reply(command.Id,"尚未连接风扇服务，请稍后再试。",false);
                 }
                 else Reply(command.Id,"不支持此操作。",false);
             }
@@ -147,8 +147,8 @@ namespace CinnaFanCon
         }
         private async Task EnableMotherboard(string id)
         {
-            if(demo){Reply(id,"演示模式无需安装组件。",true);return;}
-            if(setupPending){Reply(id,"主板支持正在准备中。",false);return;}
+            if(demo){Reply(id,"演示模式使用模拟风扇，无需安装硬件组件。",true);return;}
+            if(setupPending){Reply(id,"正在设置主板访问，请等待安装和授权完成。",false);return;}
             setupPending=true;
             try
             {
@@ -172,18 +172,18 @@ namespace CinnaFanCon
                     {
                         string cache=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"cinna-fanCon","installers");
                         if(String.Equals(Path.GetDirectoryName(path),cache,StringComparison.OrdinalIgnoreCase))File.Delete(path);
-                        throw new InvalidDataException("硬件组件校验失败，安装已停止。请重新尝试官方下载。");
+                        throw new InvalidDataException("下载的硬件组件未通过校验，已停止安装。请重新开始主板访问设置。");
                     }
                     using(var installer=Process.Start(new ProcessStartInfo(path){UseShellExecute=true,Verb="runas"}))await Task.Run(()=>installer.WaitForExit());
                     using(var key=Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\PawnIO"))
-                        if(key==null)throw new InvalidOperationException("硬件组件尚未安装完成。完成安装后再试，现有风扇控制保持运行。");
+                        if(key==null)throw new InvalidOperationException("未检测到 PawnIO。请完成安装后，重新设置主板访问。当前风扇控制仍在运行。");
                 }
                 if(worker!=null)
                 {
-                    if(!await worker.StopAsync())throw new InvalidOperationException("风扇恢复尚未完成，请稍后重试。");
+                    if(!await worker.StopAsync())throw new InvalidOperationException("尚未完成风扇恢复，请稍后重试主板访问设置。");
                     worker.Dispose();worker=null;
                 }
-                try{rememberMotherboard=true;StartWorker(true);Reply(id,"授权已完成，正在检测主板风扇。",true);}
+                try{rememberMotherboard=true;StartWorker(true);Reply(id,"已启动风扇服务，正在检测主板风扇。",true);}
                 catch{rememberMotherboard=false;StartWorker(false);throw;}
             }
             finally{setupPending=false;}
@@ -200,7 +200,7 @@ namespace CinnaFanCon
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=smart-start]').click()");
                     bool applied=false;
                     for(int i=0;i<25;i++){await Task.Delay(200);if(worker.Latest!=null&&worker.Latest.Snapshot.Channels.All(c=>c.Owned)){applied=true;break;}}
-                    if(!applied)throw new Exception("One-click smart control did not acquire all four fake fan ports.");
+                    if(!applied)throw new Exception("Automatic control did not acquire all four simulated fan ports.");
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=mode-静音]').click()");
                     bool changed=false;for(int i=0;i<25;i++){await Task.Delay(200);if(worker.Latest.Snapshot.CoolingMode=="静音"){changed=true;break;}}
                     if(!changed)throw new Exception("Changing a mode did not reach the native smart planner.");
@@ -209,7 +209,7 @@ namespace CinnaFanCon
                     if(!released)throw new Exception("Global release did not restore all fake ports.");
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=advanced-menu]').click()");await Task.Delay(200);
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=\"configure-demo/0\"]').click()");await Task.Delay(700);
-                    await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[aria-label=\"参与智能散热\"]').click()");await Task.Delay(100);
+                    await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[aria-label=\"跟随主页模式\"]').click()");await Task.Delay(100);
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=apply-channel]').click()");
                     bool excluded=false;
                     for(int i=0;i<25;i++){await Task.Delay(200);if(worker.Latest.Profiles.Any(p=>p.Id=="demo/0"&&p.Excluded==true)){excluded=true;break;}}
@@ -218,14 +218,14 @@ namespace CinnaFanCon
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=smart-start]').click()");
                     bool respected=false;
                     for(int i=0;i<25;i++){await Task.Delay(200);if(worker.Latest.Snapshot.Channels.Count(c=>c.Owned)==3&&!worker.Latest.Snapshot.Channels.First(c=>c.Id=="demo/0").Owned){respected=true;break;}}
-                    if(!respected)throw new Exception("Smart mode ignored a user's excluded fan.");
+                    if(!respected)throw new Exception("The preset was applied to an excluded fan.");
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=release-all]').click()");await Task.Delay(300);
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[aria-label=\"切换主题\"]').click()");await Task.Delay(300);
                     string dark=await browser.CoreWebView2.ExecuteScriptAsync("getComputedStyle(document.querySelector('.app-layout > .ant-layout')).backgroundColor");
                     if(!dark.Contains("17, 21, 29"))throw new Exception("Ant Design dark theme did not update the desktop surface.");
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[aria-label=\"切换主题\"]').click()");
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=mode-均衡]').click()");
-                    File.WriteAllText(smokeReport,"PASS: actual WebView2 + React + Ant Design + private native worker bridge\r\nPASS: one click acquires four fake fans with automatically chosen sources\r\nPASS: changing to Quiet mode reaches the native planner\r\nPASS: restore defaults releases all four fake fan ports\r\nPASS: advanced drawer excludes one fan; the next smart operation respects the exclusion\r\nPASS: Ant Design light/dark theme updates the desktop surface\r\nNo real hardware was opened or written by this test.\r\n");
+                    File.WriteAllText(smokeReport,"PASS: WebView2 UI communicates with the native worker\r\nPASS: automatic control acquires four simulated fans and matches temperature sources\r\nPASS: switching to Quiet mode updates the native planner\r\nPASS: restoring prior settings releases all four simulated fan ports\r\nPASS: the next preset skips a fan excluded in its settings\r\nPASS: switching themes updates the desktop surface\r\nThis test uses simulated fans and does not access physical hardware.\r\n");
                 }
                 await Task.Delay(smokeReport==null?400:2300);
                 using(var stream=File.Create(capturePath))await browser.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,stream);
@@ -241,7 +241,7 @@ namespace CinnaFanCon
             {
                 if(worker!=null&&!await worker.StopAsync())
                 {
-                    Post(new WireMessage {Type="notice",Message="风扇仍在恢复，请保持应用开启并稍后重试。",Success=false});stopPending=false;return;
+                    Post(new WireMessage {Type="notice",Message="尚未完成风扇恢复，应用将继续运行。请稍后重试退出。",Success=false});stopPending=false;return;
                 }
                 closing=true;if(worker!=null)worker.Dispose();if(tray!=null){tray.Visible=false;tray.Dispose();}browser.Dispose();Close();
             }

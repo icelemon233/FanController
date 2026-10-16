@@ -2,23 +2,33 @@
 
 English | [简体中文](./README.zh-CN.md)
 
-A Windows desktop application for controlling supported CPU, case and GPU fans. Choose a Quiet, Balanced or Cooling preset, or configure individual fans with fixed output and temperature curves.
+A Windows application that adjusts supported CPU, case and GPU fans by temperature. Choose a preset or configure individual fan groups with a temperature curve or fixed output.
 
-[Download the Windows preview](https://github.com/icelemon233/cinna-fanCon/releases/tag/v0.2.1) · [Build from source](./docs/build.md)
+[Download the Windows preview](https://github.com/icelemon233/cinna-fanCon/releases/tag/v0.2.2) · [Build from source](./docs/build.md)
 
-<img src="./docs/images/overview.png" alt="cinna-fanCon running in demo mode with synthetic temperatures and fan readings" width="960" />
+<img src="./docs/images/overview.png" alt="cinna-fanCon overview in demo mode with simulated temperature and fan readings" width="960" />
 
-*The screenshot uses the application's demo mode. The interface is currently in Simplified Chinese.*
+*Demo mode with simulated readings. The interface is currently in Simplified Chinese.*
 
 ## Use the app
 
-1. Download and extract the complete Windows archive, then open `cinna-fanCon.exe`.
-2. Select **静音** (Quiet), **均衡** (Balanced) or **强冷** (Cooling), then click **开启智能散热** to start.
-3. Change presets while control is active, or choose **恢复原设置** to release the fans.
+1. Extract the complete Windows archive and open `cinna-fanCon.exe`.
+2. Select **静音** (Quiet), **均衡** (Balanced) or **强冷** (Cooling), then click **开启自动调节** (Start automatic control).
+3. Click a preset to switch while control is active. Choose **恢复原设置** (Restore prior settings) to stop controlling the fans.
 
-CPU fans follow CPU temperature. GPU fans follow GPU core temperature. Case fans use the higher CPU/GPU temperature when both are available, otherwise CPU temperature. Fans without the necessary temperature readings, excluded fans and identified pumps are skipped.
+The app does not take control on startup. Presets choose a temperature source for each fan group:
 
-The advanced settings page provides individual curves, fixed output, minimum duty and RPM feedback. Preset changes preserve a previously configured higher minimum duty. Fans can be excluded from automatic control. Light and dark themes, live temperatures, RPM readings and tray operation are included.
+| Fan group | Temperature source |
+| --- | --- |
+| CPU | Highest valid CPU reading |
+| GPU | GPU core temperature, or another valid GPU reading if the core reading is unavailable |
+| Case | Higher CPU/GPU temperature when both are available; otherwise CPU temperature |
+
+Fans with missing required readings or control errors, excluded fans and identified pumps are skipped when applying a preset.
+
+Open **风扇设置** (Fan settings) to edit a group's curve, fixed output, minimum output or RPM sensor. Output percentages are control values, not measured RPM. Presets use a minimum output of 30% and preserve any higher value already saved. To leave a group under its prior settings, turn off **跟随主页模式** (Follow overview presets) and apply the change.
+
+Minimizing keeps the app running in the tray. The theme button switches between light and dark appearances.
 
 ## Hardware and requirements
 
@@ -26,18 +36,18 @@ The advanced settings page provides individual curves, fixed output, minimum dut
 - [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/).
 - A supported motherboard or GPU with a driver-exposed control interface.
 
-Motherboard access uses [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) and [PawnIO](https://pawnio.eu/). The **启用主板支持** flow downloads the signed PawnIO installer from its official release when needed, checks its SHA-256 and requests Windows authorization for the separate fan worker. The UI remains open.
+For CPU temperature and motherboard fan access, click **启用主板访问** (Enable motherboard access). The app uses [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) and [PawnIO](https://pawnio.eu/). When PawnIO is missing, setup downloads its signed installer from the official release and checks its SHA-256. Complete the installer and Windows authorization prompts; the app then reconnects to the fan worker and detects supported interfaces.
 
-AMD GPU access uses the installed driver's [ADLX interface](https://github.com/GPUOpen-LibrariesAndSDKs/ADLX). NVIDIA interfaces are enumerated through LibreHardwareMonitor. Support depends on the hardware and driver; dedicated USB fan controllers and Intel GPU fan control are outside the validated scope.
+AMD GPU control uses the installed driver's [ADLX interface](https://github.com/GPUOpen-LibrariesAndSDKs/ADLX). NVIDIA interfaces are detected through LibreHardwareMonitor. Available controls depend on the hardware and driver. Dedicated USB fan controllers and Intel GPU fan control have not been validated.
 
-This is a preview. Automated tests cover mock control and the desktop-to-worker interaction; actual fan-speed writes have not yet been validated on physical hardware. Some physical fans share a single control interface. Confirm PWM/DC configuration and RPM feedback for your hardware.
+This preview has automated tests for simulated fan control and desktop interaction. Fan-speed writes on physical hardware have not yet been validated. Fans connected to one control interface cannot be adjusted separately. Check your hardware's PWM/DC mode and RPM feedback before use.
 
-High temperatures or unavailable required readings request maximum output on acquired fans. Normal exit attempts to restore their prior settings. Killing the worker, driver failures or power loss can prevent restoration. Avoid running competing fan controllers at the same time.
+For fans already controlled by the app, high temperatures or missing required readings request maximum output. When you exit, the app tries to restore prior settings. If restoration fails, it stays open. The worker also attempts restoration if its connection to the app is lost. Killing the worker, driver failures or power loss can prevent restoration. Avoid running multiple controllers on the same fans.
 
 ## Development
 
-The UI uses React and Ant Design in WebView2, with a separate C# worker for hardware access. Frontend assets are bundled locally. Existing fan profiles from the previous application name can be read and saved under the new name.
+The interface uses React and Ant Design in WebView2. A separate C# worker accesses the hardware. Frontend assets are bundled with the app; normal fan control does not need an internet connection.
 
-See [build and test instructions](./docs/build.md). Downloaded dependencies, build outputs, runtime profiles and private hardware reports are excluded from Git.
+See [build and test instructions](./docs/build.md) for source layout, profile storage and migration from the previous application name. Dependency caches, build outputs, saved profiles and local hardware reports are excluded from Git.
 
-Third-party components retain their original licenses; see [third-party notices](./third-party/THIRD-PARTY-COMPONENTS.txt). A license for the project's own code has not been selected.
+Third-party components retain their own licenses; see [third-party notices](./third-party/THIRD-PARTY-COMPONENTS.txt). The project's own code does not yet have a license.

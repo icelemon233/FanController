@@ -47,7 +47,7 @@ namespace CinnaFanCon
                 using(var reader=new StreamReader(server,Encoding.UTF8,false,65536,true))
                 {
                     var hello=Wire.Decode(reader.ReadLine());
-                    if(hello.Type!="hello" || hello.Token!=token)throw new InvalidDataException("风扇服务身份校验失败。");
+                    if(hello.Type!="hello" || hello.Token!=token)throw new InvalidDataException("风扇服务身份校验失败，未建立连接。");
                     lock(sendLock)writer=new StreamWriter(server,new UTF8Encoding(false),65536,true){AutoFlush=true};
                     if(expectedStop)Send(new WireMessage {Type="command",Id="shutdown",Action="stop"});
                     string line;

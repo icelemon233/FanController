@@ -54,18 +54,18 @@ namespace CinnaFanCon
             double? gpu=TemperatureSources.Resolve("group/gpu",frame.Sensors,now);
             string source=role=="GPU"?"group/gpu":role=="CPU"?"group/cpu":cpu.HasValue && gpu.HasValue?"group/mix":"group/cpu";
             var result=new ChannelRecommendation { Id=channel.Id,Role=role,Source=source,
-                SourceLabel=source=="group/gpu"?"跟随显卡温度":source=="group/mix"?"跟随 CPU / GPU 中更高的温度":"跟随 CPU 温度" };
-            if(stored!=null && stored.Excluded==true) result.Reason="已设为保留原设置";
-            else if(role=="Pump") result.Reason="水泵保留原设置";
-            else if(!String.IsNullOrEmpty(channel.Error)) result.Reason="请先处理此风扇的控制异常";
-            else if(!(channel.Group=="GPU"?gpu:cpu).HasValue) result.Reason=channel.Group=="GPU"?"等待显卡温度读数":"等待 CPU 温度读数";
-            else if(!TemperatureSources.Resolve(source,frame.Sensors,now).HasValue) result.Reason="等待温度读数";
+                SourceLabel=source=="group/gpu"?"GPU 温度（优先核心）":source=="group/mix"?"CPU 与 GPU 的较高温度":"CPU 最高温度" };
+            if(stored!=null && stored.Excluded==true) result.Reason="已关闭“跟随主页模式”";
+            else if(role=="Pump") result.Reason="已识别为水泵，保留原设置";
+            else if(!String.IsNullOrEmpty(channel.Error)) result.Reason="控制异常，请查看风扇设置";
+            else if(!(channel.Group=="GPU"?gpu:cpu).HasValue) result.Reason=channel.Group=="GPU"?"等待有效 GPU 温度":"等待有效 CPU 温度";
+            else if(!TemperatureSources.Resolve(source,frame.Sensors,now).HasValue) result.Reason="等待有效温度读数";
             else result.Eligible=true;
             return result;
         }
         public static CoolingPlan Create(AppSnapshot frame,string mode,IEnumerable<FanProfile> stored,DateTime now)
         {
-            if(!ValidMode(mode)) throw new ArgumentException("散热模式无效。");
+            if(!ValidMode(mode)) throw new ArgumentException("风扇模式无效，请重新选择。");
             var configurations=stored==null?new List<FanProfile>():stored.ToList();
             var plan=new CoolingPlan();
             foreach(var channel in frame.Channels)
@@ -78,7 +78,7 @@ namespace CinnaFanCon
                 // Preserve a user-calibrated minimum rather than lowering it when changing presets.
                 profile.Minimum=Math.Max(30,profile.Minimum);
                 string error=profile.Validate();
-                if(error!=null) { plan.Skipped.Add(new ChannelIssue { Id=channel.Id,Name=channel.Name,Reason="保存的设置无效，请在高级设置中修正" });continue; }
+                if(error!=null) { plan.Skipped.Add(new ChannelIssue { Id=channel.Id,Name=channel.Name,Reason="已保存的设置无效，请在“风扇设置”中修改" });continue; }
                 plan.Profiles.Add(profile);
             }
             return plan;

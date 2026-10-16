@@ -8,9 +8,9 @@ using System.Threading;
 using System.Windows;
 
 [assembly:AssemblyTitle("cinna-fanCon")]
-[assembly:AssemblyDescription("cinna-fanCon Ant Design desktop UI and smart fan management")]
-[assembly:AssemblyVersion("0.2.1.0")]
-[assembly:AssemblyFileVersion("0.2.1.0")]
+[assembly:AssemblyDescription("Control supported CPU, case and GPU fans on Windows")]
+[assembly:AssemblyVersion("0.2.2.0")]
+[assembly:AssemblyFileVersion("0.2.2.0")]
 
 namespace CinnaFanCon
 {
@@ -41,7 +41,7 @@ namespace CinnaFanCon
                 {
                     bool entered=capture!=null;
                     if(!entered){try{entered=mutex.WaitOne(0);}catch(AbandonedMutexException){entered=true;}}
-                    if(!entered){MessageBox.Show("cinna-fanCon 已在运行。请从托盘打开，或退出旧版本后打开新版。","cinna-fanCon");return 0;}
+                    if(!entered){MessageBox.Show("已有 cinna-fanCon 或旧版应用正在运行。请从托盘打开，或退出后再启动此版本。","cinna-fanCon");return 0;}
                     try
                     {
                         var app=new Application {ShutdownMode=ShutdownMode.OnMainWindowClose};
