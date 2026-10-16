@@ -1,0 +1,104 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+  "vcs": {
+    "enabled": false,
+    "clientKind": "git",
+    "useIgnoreFile": false
+  },
+  "files": {
+    "includes": ["src/**", "tests/**", "scripts/**", "*.json", "vite.config.ts"]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "suspicious": {
+        "noImportCycles": "error"
+      }
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single"
+    }
+  },
+  "assist": {
+    "enabled": true,
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["src/styles/app.css"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noImportantStyles": "off"
+          },
+          "style": {
+            "noDescendingSpecificity": "off"
+          }
+        }
+      }
+    },
+    {
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noArrayIndexKey": "off"
+          }
+        }
+      },
+      "includes": ["src/features/fans/CurveEditor.tsx"]
+    },
+    {
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "options": {
+                "patterns": [
+                  {
+                    "message": "Platform adapters and shared UI must not depend on application or feature modules.",
+                    "group": ["**/app/**", "**/features/**"]
+                  }
+                ]
+              },
+              "level": "error"
+            }
+          }
+        }
+      },
+      "includes": ["src/platform/**", "src/components/**"]
+    },
+    {
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "options": {
+                "patterns": [
+                  {
+                    "message": "Features expose operations to app assembly; they must not import app internals.",
+                    "group": ["**/app/**"]
+                  }
+                ]
+              },
+              "level": "error"
+            }
+          }
+        }
+      },
+      "includes": ["src/features/**"]
+    }
+  ]
+}

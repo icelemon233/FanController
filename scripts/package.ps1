@@ -3,6 +3,9 @@ $projectRoot=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $metadata=Get-Content -LiteralPath (Join-Path $projectRoot 'version.json') -Raw | ConvertFrom-Json
 $output=Join-Path $projectRoot 'artifacts\app'
 if(-not (Test-Path -LiteralPath (Join-Path $output 'cinna-fanCon.exe'))){throw 'Build the app before packaging.'}
+if((Get-Item -LiteralPath (Join-Path $output 'cinna-fanCon.exe')).VersionInfo.FileVersion -ne ($metadata.version+'.0')){throw 'The compiled app version differs from version.json.'}
+$frontendMetadata=Get-Content -LiteralPath (Join-Path $projectRoot 'frontend\dist\build-info.json') -Raw | ConvertFrom-Json
+if($frontendMetadata.target -ne 'native' -or $frontendMetadata.version -ne $metadata.version){throw 'Packaging requires a native frontend build at the current app version.'}
 $stage=Join-Path $projectRoot ('work\package-'+[Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $stage | Out-Null
 foreach($file in @('cinna-fanCon.exe','cinna-fanCon.Worker.exe','cinna-fanCon.exe.config','cinna-fanCon.Worker.exe.config')){Copy-Item -LiteralPath (Join-Path $output $file) -Destination $stage}

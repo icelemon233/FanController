@@ -16,6 +16,7 @@ namespace CinnaFanCon
         [DataMember(EmitDefaultValue=false)] public string Mode;
         [DataMember(EmitDefaultValue=false)] public string Token;
         [DataMember(EmitDefaultValue=false)] public string Message;
+        [DataMember(EmitDefaultValue=false)] public string PersistenceError;
         [DataMember] public bool Success;
         [DataMember(EmitDefaultValue=false)] public FanProfile Profile;
         [DataMember(EmitDefaultValue=false)] public AppSnapshot Snapshot;

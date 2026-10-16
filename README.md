@@ -4,7 +4,7 @@ English | [简体中文](./README.zh-CN.md)
 
 A Windows application that adjusts supported CPU, case and GPU fans by temperature. Choose a preset or configure individual fan groups with a temperature curve or fixed output.
 
-[Download the Windows installer](https://github.com/icelemon233/cinna-fanCon/releases/download/v0.3.0/cinna-fanCon-v0.3.0-windows-x64-setup.exe) · [Portable ZIP](https://github.com/icelemon233/cinna-fanCon/releases/tag/v0.3.0) · [Build from source](./docs/build.md)
+[Download the Windows installer](https://github.com/icelemon233/cinna-fanCon/releases/download/v0.3.1/cinna-fanCon-v0.3.1-windows-x64-setup.exe) · [Portable ZIP](https://github.com/icelemon233/cinna-fanCon/releases/tag/v0.3.1) · [Build from source](./docs/build.md)
 
 <img src="./docs/images/overview.png" alt="cinna-fanCon overview in demo mode with simulated temperature and fan readings" width="960" />
 
@@ -54,6 +54,6 @@ The interface uses React and Ant Design in WebView2. A separate C# worker access
 
 See [build and test instructions](./docs/build.md) for source layout, profile storage and migration from the previous application name. Dependency caches, build outputs, saved profiles and local hardware reports are excluded from Git.
 
-The [design notes](./docs/design.md) describe the interface changes and visual checks.
+The [frontend architecture](./docs/frontend-architecture.md) describes module boundaries, native data validation, editor state and checks. The [design notes](./docs/design.md) describe the interface and visual checks.
 
 Third-party components retain their own licenses; see [third-party notices](./third-party/THIRD-PARTY-COMPONENTS.txt). The project's own code does not yet have a license.

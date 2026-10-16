@@ -4,7 +4,7 @@
 
 根据温度调节受支持的 CPU、机箱和显卡风扇的 Windows 应用。可以选择预设模式，也可以单独设置某组风扇的曲线或固定输出。
 
-[下载 Windows 安装程序](https://github.com/icelemon233/cinna-fanCon/releases/download/v0.3.0/cinna-fanCon-v0.3.0-windows-x64-setup.exe) · [便携 ZIP](https://github.com/icelemon233/cinna-fanCon/releases/tag/v0.3.0) · [从源码构建](./docs/build.md)
+[下载 Windows 安装程序](https://github.com/icelemon233/cinna-fanCon/releases/download/v0.3.1/cinna-fanCon-v0.3.1-windows-x64-setup.exe) · [便携 ZIP](https://github.com/icelemon233/cinna-fanCon/releases/tag/v0.3.1) · [从源码构建](./docs/build.md)
 
 <img src="./docs/images/overview.png" alt="cinna-fanCon 散热概览，使用模拟温度和风扇读数" width="960" />
 
@@ -54,6 +54,6 @@ AMD 显卡使用已安装驱动的 [ADLX 接口](https://github.com/GPUOpen-Libr
 
 源码目录、配置保存位置、旧名称配置迁移及构建测试方法见[开发说明](./docs/build.md)。依赖缓存、构建输出、已保存配置和本机硬件报告均不提交到 Git。
 
-界面调整及视觉检查见[设计记录](./docs/design.md)。
+模块边界、原生数据校验、编辑状态及检查命令见[前端架构说明](./docs/frontend-architecture.md)，界面和视觉检查见[设计记录](./docs/design.md)。
 
 第三方组件使用各自的许可证，见[依赖说明](./third-party/THIRD-PARTY-COMPONENTS.txt)。项目自身代码暂未指定许可证。

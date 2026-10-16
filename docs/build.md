@@ -36,10 +36,13 @@ To work on the frontend:
 
 ```powershell
 pnpm --dir frontend install --frozen-lockfile --ignore-scripts
+pnpm --dir frontend check
 pnpm --dir frontend dev
 ```
 
-The browser preview uses simulated data and does not connect to a hardware worker.
+The development server uses an explicitly labelled browser demo when the native bridge is unavailable. To preview a built browser demo, run `pnpm --dir frontend build:demo` and `pnpm --dir frontend preview:demo`. That output is separate from the desktop production build. A production desktop bundle without its native bridge shows a connection error and never silently creates simulated devices.
+
+`check` runs strict type checking of application code, tests and Vite configuration, Biome lint with import boundaries and cycle checks, formatting checks and Node behavior tests. The [frontend architecture](./frontend-architecture.md) records state ownership, lifecycle and the native contract. The read-only GitHub workflow runs frontend checks and Windows core checks; desktop and installer checks still run on a Windows desktop session.
 
 Native source is in `native`, frontend source in `frontend/src`, and third-party notices in `third-party`. Pinned native dependencies are listed in `scripts/dependencies.json`. Build outputs, dependency caches and test reports are excluded from Git.
 
@@ -65,7 +68,9 @@ Profiles are saved in `%LOCALAPPDATA%\cinna-fanCon\profiles.json`. If that file 
 
 安装源码位于 `installer/setup.nsi`。应用图标源自 `frontend/public/app.svg`，`scripts/create-icon.ps1` 用于生成 Windows ICO。仓库尚未配置代码签名，签名需要相应证书。
 
-前端开发使用上方 pnpm 命令。浏览器预览使用模拟数据，不连接硬件服务。原生源码位于 `native`，前端源码位于 `frontend/src`，第三方说明位于 `third-party`，原生依赖版本记录在 `scripts/dependencies.json`。
+前端开发使用上方 pnpm 命令。`check` 检查实际源码、测试与 Vite 配置，并运行模块边界、循环依赖、格式和行为测试。开发服务器可使用明确标注的演示设备；构建后的浏览器演示使用 `build:demo` 与 `preview:demo`，输出到独立目录。桌面生产包缺少原生桥接时显示错误，不自动回退为模拟设备。
+
+状态归属、生命周期和桥接契约见[前端架构说明](./frontend-architecture.md)。GitHub 工作流以只读权限检查前端和 Windows 核心；桌面和安装测试仍在本机 Windows 桌面会话运行。原生源码位于 `native`，前端源码位于 `frontend/src`，第三方说明位于 `third-party`，原生依赖版本记录在 `scripts/dependencies.json`。
 
 风扇配置保存在 `%LOCALAPPDATA%\cinna-fanCon\profiles.json`。该文件不存在时，可读取旧名称下的 `%LOCALAPPDATA%\FanDesk\profiles.json`，后续保存使用新目录。两个版本共用进程锁，避免同时调节同一组风扇。
 

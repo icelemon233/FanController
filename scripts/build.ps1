@@ -8,6 +8,8 @@ $frontend=Join-Path $projectRoot 'frontend'
 if(-not $SkipFrontend){
   & pnpm --dir $frontend install --frozen-lockfile --ignore-scripts
   if($LASTEXITCODE -ne 0){throw 'Frontend dependency installation failed.'}
+  & pnpm --dir $frontend check
+  if($LASTEXITCODE -ne 0){throw 'Frontend checks failed.'}
   & pnpm --dir $frontend run build
   if($LASTEXITCODE -ne 0){throw 'Frontend build failed.'}
 }

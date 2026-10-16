@@ -6,6 +6,7 @@
 /.taste-skill/
 node_modules/
 frontend/dist/
+frontend/dist-demo/
 frontend/*.tsbuildinfo
 .vs/
 bin/

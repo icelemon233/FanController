@@ -53,9 +53,9 @@ namespace CinnaFanCon
             try {lock(sendLock)writer.WriteLine(Wire.Encode(message));}
             catch {stopping.Set();}
         }
-        private void Reply(string id,string message,bool success,int applied=0,int skipped=0)
+        private void Reply(string id,string message,bool success,int applied=0,int skipped=0,string persistenceError=null)
         {
-            Send(new WireMessage {Type="reply",Id=id,Message=message,Success=success,Applied=applied,Skipped=skipped});
+            Send(new WireMessage {Type="reply",Id=id,Message=message,Success=success,Applied=applied,Skipped=skipped,PersistenceError=persistenceError});
         }
         private void Save(IEnumerable<FanProfile> profiles)
         {
@@ -95,7 +95,7 @@ namespace CinnaFanCon
                 engine=new FanEngine();
                 engine.Updated+=Publish;
                 engine.Completed+=(p,message,success)=>{if(p!=null && success)Save(new[]{p});};
-                engine.RequestCompleted+=(id,message,success)=>Reply(id,saveError??message,success);
+                engine.RequestCompleted+=(id,message,success)=>Reply(id,saveError??message,success,0,0,saveError);
                 engine.SmartCompleted+=OnSmartCompleted;
                 engine.Start();
             }
@@ -129,7 +129,7 @@ namespace CinnaFanCon
             bool success=result.Applied.Count>0 && result.Errors.Count==0;
             string message=result.Applied.Count==0?"没有可自动调节的风扇，请查看设备状态；CPU 和机箱风扇可能需要先启用主板访问。":"已将 "+result.Applied.Count+" 组风扇设为"+result.Mode+"模式。";
             if(result.Errors.Count>0)message="以下风扇未能应用设置："+String.Join("；",result.Errors.Select(e=>e.Name+"："+e.Reason));
-            Reply(result.Id,saveError??message,success,result.Applied.Count,result.Skipped.Count);
+            Reply(result.Id,saveError??message,success,result.Applied.Count,result.Skipped.Count,saveError);
         }
         private void ReadCommands()
         {
