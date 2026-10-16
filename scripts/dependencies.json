@@ -1,0 +1,12 @@
+{
+  "LibreHardwareMonitor": {
+    "version": "0.9.6",
+    "url": "https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/releases/download/v0.9.6/LibreHardwareMonitor.zip",
+    "sha256": "086D9F1B5A99E643EDC2CFAAAC16051685B551E4C5AC0B32A57C58C0E529C001"
+  },
+  "WebView2": {
+    "version": "1.0.4258.31",
+    "url": "https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/1.0.4258.31/microsoft.web.webview2.1.0.4258.31.nupkg",
+    "sha256": "56F7F4B8BF9AEE4B8EFEFBBDD4F67D5F74EBD1B100ED0806DA71BF76AF481AA9"
+  }
+}

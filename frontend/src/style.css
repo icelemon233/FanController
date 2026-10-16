@@ -1,0 +1,40 @@
+*{box-sizing:border-box}
+html,body,#root,.ant-app{margin:0;width:100%;height:100%;overflow:hidden}
+body{font-family:"Segoe UI","Microsoft YaHei UI",sans-serif;-webkit-font-smoothing:antialiased}
+button{touch-action:manipulation}::selection{background:#bae0ff}
+.app-layout{height:100%;min-width:0}.app-sidebar{position:relative;padding-top:26px}
+.brand{display:flex;align-items:center;gap:10px;margin:0 20px 30px}
+.brand-icon{width:40px;height:40px;background:var(--fd-primary);color:white;border-radius:11px;display:grid;place-items:center;flex-shrink:0}
+.brand-name{font-size:16px;letter-spacing:-.45px;display:block;line-height:1.2;white-space:nowrap}.brand-caption{font-size:10px;display:block;margin-top:4px;white-space:nowrap}
+.sidebar-bottom{position:absolute;left:24px;bottom:24px}
+.ant-layout-sider-collapsed .brand{margin-inline:12px}.ant-layout-sider-collapsed .brand>div:last-child{display:none}
+.ant-layout-sider-collapsed .sidebar-bottom{left:14px}.ant-layout-sider-collapsed .sidebar-bottom .ant-tag,.ant-layout-sider-collapsed .sidebar-bottom .ant-typography,.ant-layout-sider-collapsed .sidebar-bottom .ant-btn>span:not(.anticon){display:none}
+.app-header{height:60px;padding:0 16px 0 28px;display:flex;justify-content:space-between;align-items:center;line-height:normal;flex-shrink:0;user-select:none}
+.window-actions{border-left:1px solid var(--fd-border);padding-left:8px}.window-close:hover{color:#fff!important;background:#e5484d!important}
+.main-scroll{overflow:auto;min-height:0}.main-content{width:100%;max-width:1240px;margin:0 auto;padding:24px 28px 16px;display:flex;flex-direction:column;gap:18px}
+.page-heading{display:flex;justify-content:space-between;align-items:center;gap:16px}.page-heading h3.ant-typography{margin:0 0 6px;font-size:24px;letter-spacing:-.5px}.page-heading .ant-typography-secondary{margin:0}
+.setup-alert .ant-alert-content{min-width:0}.setup-alert .ant-alert-actions{margin-inline-start:18px}
+.stats-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.stat-card{overflow:hidden}
+.stat-icon{height:30px;width:30px;border-radius:8px;display:grid;place-items:center;font-size:16px}
+.stat-value-row{display:flex;justify-content:space-between;align-items:center;height:60px;margin-top:5px;position:relative}.ant-statistic-content{letter-spacing:-1px}
+.temperature-unit{font-size:15px;letter-spacing:0;font-weight:400;color:var(--fd-muted);margin-left:3px}
+.mini-trend{width:125px;height:52px;max-width:43%;opacity:.9}.trend-placeholder{height:52px}
+.stat-subtitle{display:block;font-size:11px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;margin-top:4px}
+.cooling-heading h4.ant-typography{margin:0 0 5px;font-size:19px}.cooling-heading .ant-typography-secondary{font-size:12px}
+.cooling-icon{width:54px;height:54px;border-radius:13px;background:var(--fd-fill);color:var(--fd-muted);display:grid;place-items:center;flex-shrink:0}.cooling-icon.is-active{background:var(--fd-primary-bg);color:var(--fd-primary)}
+.mode-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:24px}
+.mode-option.ant-btn{height:122px;width:100%;padding:18px;text-align:left;display:block;position:relative;background:var(--fd-container);box-shadow:none}.mode-option.ant-btn>span:not(.anticon){display:initial}
+.mode-option.mode-selected{border-color:var(--fd-primary);background:var(--fd-primary-bg)}.mode-icon{font-size:19px;color:var(--fd-muted)}.mode-selected .mode-icon{color:var(--fd-primary)}
+.mode-description{font-size:13px;line-height:1.35;white-space:normal}.mode-detail{font-size:11px;line-height:1.2;white-space:normal}.selected-check{position:absolute;right:14px;top:18px;color:var(--fd-primary);font-size:16px}
+.protection-note{padding-top:18px;margin-top:20px;border-top:1px solid var(--fd-border);font-size:11px;align-items:center}.protection-note .ant-typography-secondary{font-size:11px}
+.section-heading{display:flex;justify-content:space-between;align-items:center;margin-top:2px}.section-heading h5.ant-typography{margin:0;font-size:14px}.section-heading>.ant-typography{font-size:11px}
+.device-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.device-card .ant-card-body{padding:18px!important}
+.device-icon{width:36px;height:36px;background:var(--fd-fill);border-radius:9px;display:grid;place-items:center;color:var(--fd-muted);font-size:18px}
+.device-model{display:block;max-width:270px;font-size:10px;line-height:1.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.device-summary{margin-top:15px;padding-top:12px;border-top:1px solid var(--fd-border);font-size:11px}.device-summary>.ant-typography{font-size:11px}
+.main-footer{display:flex;justify-content:space-between;gap:20px;padding-top:4px;font-size:10px}.main-footer .ant-typography{font-size:10px}
+.curve-canvas{border:1px solid;border-radius:10px;padding:5px 4px 0}.curve-canvas svg{display:block;width:100%;height:auto}.ant-drawer-footer .ant-typography{font-size:12px}
+::-webkit-scrollbar{width:7px;height:7px}::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--fd-muted,#7b8797) 35%,transparent);border-radius:6px}::-webkit-scrollbar-track{background:transparent}
+@media(max-width:1100px){.main-content{padding:20px;gap:16px}.app-header{padding-inline-start:20px}.mode-option.ant-btn{padding:15px;height:120px}.mini-trend{width:80px}.mode-description{font-size:12px}.device-model{max-width:215px}.cooling-heading .ant-btn-lg{font-size:13px;padding-inline:14px}.cooling-heading h4.ant-typography{font-size:17px}.cooling-icon{width:44px;height:44px}.stats-grid{gap:12px}.stat-card .ant-card-body{padding:16px!important}}
+@media(max-width:900px){.cooling-heading{flex-wrap:wrap}.cooling-heading>div:last-child{margin-inline-start:auto}.mini-trend,.trend-placeholder{display:none}.device-grid{grid-template-columns:1fr}.page-heading h3.ant-typography{font-size:21px}.device-model{max-width:340px}.main-footer{flex-wrap:wrap}.mode-grid{gap:10px}}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}

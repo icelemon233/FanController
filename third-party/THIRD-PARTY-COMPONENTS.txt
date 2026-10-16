@@ -1,0 +1,53 @@
+Third-party components used by cinna-fanCon 0.2.1
+
+LibreHardwareMonitor 0.9.6 -- MPL-2.0
+Source: https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/tree/3d331e3370efb858411f19511373eff65a218701
+Embedded PawnIO modules: LGPL-2.1; notice and license in LibreHardwareMonitor-third-party.txt
+Module source: https://github.com/namazso/PawnIO.Modules
+
+BlackSharp.Core 1.0.7 -- MPL-2.0
+NuGet: https://www.nuget.org/packages/BlackSharp.Core/1.0.7
+Source: https://github.com/Blacktempel/BlackSharp/tree/c70b735c6cec123ee8a046ac4a0bc6c606f52cf0
+
+DiskInfoToolkit 1.1.2 -- MPL-2.0
+NuGet: https://www.nuget.org/packages/DiskInfoToolkit/1.1.2
+Source: https://github.com/Blacktempel/DiskInfoToolkit/tree/25319eae5781e75bcf141e844ceab2afe94d40ea
+
+HidSharp 2.6.4 -- LICENSE.txt
+NuGet: https://www.nuget.org/packages/HidSharp/2.6.4
+
+RAMSPDToolkit-NDD 1.4.2 -- MPL-2.0
+NuGet: https://www.nuget.org/packages/RAMSPDToolkit-NDD/1.4.2
+Source: https://github.com/Blacktempel/RAMSPDToolkit/tree/3b47b960e0830fef344624ad5e389675d5f0a1ce
+
+System.Buffers 4.6.1 -- MIT
+NuGet: https://www.nuget.org/packages/System.Buffers/4.6.1
+Source: https://github.com/dotnet/maintenance-packages/tree/6b84308c9ad012f53240d72c1d716d7e42546483
+
+System.Memory 4.6.3 -- MIT
+NuGet: https://www.nuget.org/packages/System.Memory/4.6.3
+Source: https://github.com/dotnet/maintenance-packages/tree/f62ca0009b038cab4725a720f386623a969d73ad
+
+System.Numerics.Vectors 4.6.1 -- MIT
+NuGet: https://www.nuget.org/packages/System.Numerics.Vectors/4.6.1
+Source: https://github.com/dotnet/maintenance-packages/tree/6b84308c9ad012f53240d72c1d716d7e42546483
+
+System.Runtime.CompilerServices.Unsafe 6.1.2 -- MIT
+NuGet: https://www.nuget.org/packages/System.Runtime.CompilerServices.Unsafe/6.1.2
+Source: https://github.com/dotnet/maintenance-packages/tree/f62ca0009b038cab4725a720f386623a969d73ad
+
+AMD ADLX: uses the installed AMD driver through its C ABI. No AMD driver DLL is redistributed.
+SDK interface source and terms: https://github.com/GPUOpen-LibrariesAndSDKs/ADLX
+PawnIO official signed installer 2.2.0 is downloaded on user request and is not bundled with the repository or portable archive:
+https://github.com/namazso/PawnIO.Setup/releases/tag/2.2.0
+Installer SHA-256: 1F519A22E47187F70A1379A48CA604981C4FCF694F4E65B734AAA74A9FBA3032
+
+Microsoft.Web.WebView2 SDK 1.0.4258.31
+Source and terms: https://www.nuget.org/packages/Microsoft.Web.WebView2/1.0.4258.31
+See Microsoft-WebView2-LICENSE.txt.
+
+Ant Design 6.6.6, React 19.3.1, React DOM 19.3.1, Ant Design Icons 6.3.4 and transitive frontend dependencies.
+Their original license texts are in Frontend-THIRD-PARTY-LICENSES.txt.
+https://ant.design/
+https://github.com/ant-design/ant-design
+https://github.com/facebook/react

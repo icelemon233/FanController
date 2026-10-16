@@ -1,0 +1,32 @@
+# Build outputs and downloaded dependencies
+/.deps/
+/artifacts/
+/dist/
+/work/
+node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
+.vs/
+bin/
+obj/
+*.exe
+*.dll
+*.pdb
+*.zip
+*.user
+*.log
+
+# Local configuration and hardware diagnostics
+.env
+.env.*
+profiles.json
+profiles.json.*
+motherboard-access.enabled
+hardware-readonly.json
+snapshot.json
+webview-*/
+
+# Editor and OS metadata
+.DS_Store
+Thumbs.db
+.idea/
