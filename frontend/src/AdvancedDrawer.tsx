@@ -18,7 +18,7 @@ export default function AdvancedDrawer({ channel, snapshot, open, busy, onClose,
     if(value.Excluded)value.Mode=0;
     if(await onApply(value))onClose();
   };
-  return <Drawer title={<Space><SlidersOutlined/>风扇设置</Space>} size={660} open={open} onClose={onClose} extra={<Tag color={channel.Owned?'blue':'default'}>{channel.Owned?'调节中':'未接管'}</Tag>}
+  return <Drawer className="fan-drawer" title={<Space><SlidersOutlined/>风扇设置</Space>} size={660} open={open} onClose={onClose} extra={<Tag color={channel.Owned?'blue':'default'}>{channel.Owned?'调节中':'未接管'}</Tag>}
     footer={<Flex justify="space-between" align="center" gap={16}><Typography.Text type="secondary">点击“应用设置”后生效</Typography.Text><Space><Button onClick={onClose}>取消</Button><Button data-testid="apply-channel" type="primary" icon={<CheckOutlined/>} loading={busy} disabled={Boolean(error)||disabled} onClick={apply}>应用设置</Button></Space></Flex>}>
     <Flex vertical gap={20}>
       <div><Typography.Title level={4} style={{margin:'0 0 4px'}}>{channel.Name}</Typography.Title><Typography.Text type="secondary">{channel.Device}</Typography.Text></div>

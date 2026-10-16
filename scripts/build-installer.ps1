@@ -1,0 +1,48 @@
+param([string]$CompilerPath)
+$ErrorActionPreference='Stop'
+$fanRoot=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+$fanMetadata=Get-Content -LiteralPath (Join-Path $fanRoot 'version.json') -Raw | ConvertFrom-Json
+$fanDependencies=Get-Content -LiteralPath (Join-Path $PSScriptRoot 'dependencies.json') -Raw | ConvertFrom-Json
+$fanCache=Join-Path $fanRoot '.deps'
+New-Item -ItemType Directory -Force -Path $fanCache | Out-Null
+if(-not $CompilerPath){
+  $fanDependency=$fanDependencies.InstallerNSIS
+  $fanCompilerZip=Join-Path $fanCache ('InstallerNSIS-'+$fanDependency.version+'.zip')
+  if(-not (Test-Path -LiteralPath $fanCompilerZip)){Invoke-WebRequest -Uri $fanDependency.url -OutFile $fanCompilerZip}
+  if((Get-FileHash -LiteralPath $fanCompilerZip -Algorithm SHA256).Hash -ne $fanDependency.sha256){throw 'NSIS archive checksum mismatch.'}
+  Expand-Archive -LiteralPath $fanCompilerZip -DestinationPath $fanCache -Force
+  $CompilerPath=Join-Path $fanCache ('nsis-'+$fanDependency.version+'\makensis.exe')
+}
+if(-not (Test-Path -LiteralPath $CompilerPath)){throw 'NSIS makensis.exe was not found.'}
+$fanBootstrapper=Join-Path $fanCache 'MicrosoftEdgeWebview2Setup.exe'
+if(-not (Test-Path -LiteralPath $fanBootstrapper)){Invoke-WebRequest -Uri $fanDependencies.WebView2Bootstrapper.url -OutFile $fanBootstrapper}
+if((Get-FileHash -LiteralPath $fanBootstrapper -Algorithm SHA256).Hash -ne $fanDependencies.WebView2Bootstrapper.sha256){throw 'WebView2 bootstrapper checksum mismatch; verify the current Microsoft download before updating dependencies.json.'}
+$fanSignature=Get-AuthenticodeSignature -LiteralPath $fanBootstrapper
+if($fanSignature.Status -ne 'Valid' -or $fanSignature.SignerCertificate.Subject -notmatch 'Microsoft Corporation'){throw 'WebView2 bootstrapper signature verification failed.'}
+$fanApp=Join-Path $fanRoot 'artifacts\app\cinna-fanCon.exe'
+if((Get-Item -LiteralPath $fanApp).VersionInfo.FileVersion -ne ($fanMetadata.version+'.0')){throw 'Build the app at the current version before creating the installer.'}
+$fanArchive=& (Join-Path $PSScriptRoot 'package.ps1')
+$fanStage=Join-Path $fanRoot ('work\installer-'+[Guid]::NewGuid().ToString('N'))
+Expand-Archive -LiteralPath $fanArchive -DestinationPath $fanStage
+$fanRemoval=[Collections.Generic.List[string]]::new()
+$fanSize=0
+function ConvertTo-NsisString([string]$Value){return $Value.Replace('$','$$').Replace('"','$\"')}
+foreach($fanFile in (Get-ChildItem -LiteralPath $fanStage -File -Recurse)){
+  $fanRelative=[IO.Path]::GetRelativePath($fanStage,$fanFile.FullName)
+  if($fanRelative.StartsWith('..') -or [IO.Path]::IsPathRooted($fanRelative)){throw 'Unexpected installer payload path.'}
+  $fanRemoval.Add('Delete "$INSTDIR\'+(ConvertTo-NsisString $fanRelative)+'"')
+  $fanSize+=$fanFile.Length
+}
+foreach($fanDirectory in (Get-ChildItem -LiteralPath $fanStage -Directory -Recurse | Sort-Object {$_.FullName.Length} -Descending)){
+  $fanRelative=[IO.Path]::GetRelativePath($fanStage,$fanDirectory.FullName)
+  $fanRemoval.Add('RMDir "$INSTDIR\'+(ConvertTo-NsisString $fanRelative)+'"')
+}
+$fanRemovalFile=Join-Path $fanRoot ('work\installer-removal-'+[Guid]::NewGuid().ToString('N')+'.nsh')
+[IO.File]::WriteAllLines($fanRemovalFile,$fanRemoval,[Text.UTF8Encoding]::new($false))
+$fanOutput=Join-Path $fanRoot ('dist\cinna-fanCon-v'+$fanMetadata.version+'-windows-x64-setup.exe')
+$fanArguments=@('/V2','/INPUTCHARSET','UTF8',('/DProjectRoot='+$fanRoot),('/DAppVersion='+$fanMetadata.version),('/DPayload='+$fanStage),('/DBootstrapper='+$fanBootstrapper),('/DRemovalList='+$fanRemovalFile),('/DInstalledSizeKB='+[Math]::Ceiling($fanSize/1024)),('/DOutputFile='+$fanOutput),(Join-Path $fanRoot 'installer\setup.nsi'))
+& $CompilerPath @fanArguments
+if($LASTEXITCODE -ne 0){throw 'NSIS installer compilation failed.'}
+$fanHash=(Get-FileHash -LiteralPath $fanOutput -Algorithm SHA256).Hash.ToLowerInvariant()
+($fanHash+'  '+[IO.Path]::GetFileName($fanOutput)) | Set-Content -LiteralPath ($fanOutput+'.sha256') -Encoding ascii
+Write-Output $fanOutput

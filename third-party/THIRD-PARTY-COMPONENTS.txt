@@ -1,4 +1,4 @@
-Third-party components used by cinna-fanCon 0.2.2
+Third-party components used by cinna-fanCon 0.3.0
 
 LibreHardwareMonitor 0.9.6 -- MPL-2.0
 Source: https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/tree/3d331e3370efb858411f19511373eff65a218701
@@ -51,3 +51,15 @@ Their original license texts are in Frontend-THIRD-PARTY-LICENSES.txt.
 https://ant.design/
 https://github.com/ant-design/ant-design
 https://github.com/facebook/react
+
+NSIS 3.13 builds the Windows installer and supplies its setup/uninstall engine.
+Source, release and license: https://nsis.sourceforge.io/Download
+The original license text is in NSIS-LICENSE.txt, including the LZMA linking exception.
+Build archive SHA-256: BA63DFFC4410EE89193E1CB5A41989991BD77C61068DA17E3156D136B7B0B3D8
+
+Microsoft WebView2 Evergreen Bootstrapper, downloaded 2026-10-17, is bundled only in the Setup EXE.
+The build verifies its Microsoft Authenticode signature and SHA-256:
+C90F9CDCEC5E1997E581127DD1CB4526C239551908E9ADBFE63AD14671BDCC94
+Distribution documentation and download:
+https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution
+https://developer.microsoft.com/microsoft-edge/webview2/

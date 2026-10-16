@@ -7,6 +7,7 @@ pwsh -File ./scripts/build.ps1
 pwsh -File ./scripts/test.ps1
 pwsh -File ./scripts/test.ps1 -Desktop
 pwsh -File ./scripts/package.ps1
+pwsh -File ./scripts/build-installer.ps1
 ```
 
 `build.ps1` downloads the pinned LibreHardwareMonitor and WebView2 SDK packages into `.deps` and checks their SHA-256. It builds the frontend, compiles both C# executables with the Windows .NET Framework compiler and writes the app to `artifacts/app`.
@@ -14,6 +15,22 @@ pwsh -File ./scripts/package.ps1
 `test.ps1` checks control logic using simulated fan ports. With `-Desktop`, it also runs the WebView2 interface in demo mode and checks preset changes, restoration, per-fan exclusion and theme switching through the native worker. Both modes use simulated fans and do not access physical hardware. Desktop tests require WebView2 Runtime. Reports are saved in `artifacts/tests`.
 
 `package.ps1` writes a portable ZIP and its SHA-256 file to `dist`. The app downloads PawnIO's pinned installer from its official release when motherboard setup needs it; the installer is not included in the ZIP.
+
+`build-installer.ps1` verifies and extracts the pinned NSIS compiler without installing it. It compiles a per-user Setup EXE, with optional desktop shortcuts, Start menu entries and an uninstaller. The output and its SHA-256 file are saved in `dist`. The embedded Microsoft WebView2 bootstrapper is checked against its pinned SHA-256 and Microsoft Authenticode signature. Setup uses it only when the runtime is missing.
+
+The bootstrapper's Microsoft download address can change its contents. A changed download fails the checksum check; verify Microsoft's signature before updating the recorded hash in `scripts/dependencies.json`.
+
+To test installation on a Windows account where cinna-fanCon is not already installed:
+
+```powershell
+pwsh -File ./scripts/test-installer.ps1
+```
+
+This temporarily installs the app, runs its desktop demo, reinstalls it to check upgrading, and uninstalls it. The test also checks that active control blocks setup and uninstall, and that files outside the package manifest remain. Existing installations are left untouched. No physical fan control is exercised. The branch that downloads a missing WebView2 Runtime needs a separate clean-machine check.
+
+Setup uses `%LOCALAPPDATA%\Programs\cinna-fanCon`. Application and worker mutexes prevent installing or uninstalling while either is running. The installer also blocks launching the application during installation. The uninstaller deletes only files listed in the package manifest, then removes empty directories. Saved profiles under `%LOCALAPPDATA%\cinna-fanCon` remain.
+
+Installer source is in `installer/setup.nsi`. App icons come from `frontend/public/app.svg`; `scripts/create-icon.ps1` creates the Windows ICO variant. Code signing requires a signing certificate and is not configured in this repository.
 
 To work on the frontend:
 
@@ -37,6 +54,16 @@ Profiles are saved in `%LOCALAPPDATA%\cinna-fanCon\profiles.json`. If that file 
 `test.ps1` 使用模拟风扇检查控制逻辑。加上 `-Desktop` 后，还会在 WebView2 中运行演示界面，通过原生服务检查模式切换、恢复、单组排除和主题切换。两种测试均不访问真实硬件，报告位于 `artifacts/tests`。桌面测试需要 WebView2 Runtime。
 
 `package.ps1` 将便携 ZIP 和 SHA-256 文件写入 `dist`。PawnIO 安装器不随 ZIP 分发，应用会在主板设置需要时从官方发布地址下载固定版本。
+
+`build-installer.ps1` 校验并解压固定版本的 NSIS 编译器，无需在系统中安装编译器。生成的安装 EXE 支持当前用户安装、可选桌面快捷方式、开始菜单入口及卸载，文件和 SHA-256 位于 `dist`。随安装包附带的 WebView2 引导安装器会校验 SHA-256 和微软数字签名，仅在缺少运行库时使用。
+
+微软下载地址上的安装器可能更新。文件变化后，校验会拒绝构建；确认微软签名后，再更新 `scripts/dependencies.json` 中的哈希。
+
+在尚未安装 cinna-fanCon 的 Windows 账户下，可运行 `pwsh -File ./scripts/test-installer.ps1`。测试会临时安装应用、运行桌面演示、重复安装以验证升级，再卸载；同时检查运行中拦截和安装清单外文件的保留。已有安装不会被修改，测试不控制真实风扇。缺少 WebView2 时的联网安装分支，需另用干净系统验证。
+
+应用安装到 `%LOCALAPPDATA%\Programs\cinna-fanCon`。应用或风扇服务运行时会阻止安装和卸载，安装期间也会阻止启动应用。卸载仅删除安装清单中的文件，再移除空目录；`%LOCALAPPDATA%\cinna-fanCon` 中的配置会保留。
+
+安装源码位于 `installer/setup.nsi`。应用图标源自 `frontend/public/app.svg`，`scripts/create-icon.ps1` 用于生成 Windows ICO。仓库尚未配置代码签名，签名需要相应证书。
 
 前端开发使用上方 pnpm 命令。浏览器预览使用模拟数据，不连接硬件服务。原生源码位于 `native`，前端源码位于 `frontend/src`，第三方说明位于 `third-party`，原生依赖版本记录在 `scripts/dependencies.json`。
 

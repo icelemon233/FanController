@@ -211,6 +211,7 @@ namespace CinnaFanCon
                 string name=values["--pipe"],token=values["--token"];
                 if(!name.StartsWith("cinna-fanCon-") || name.Length>80 || token.Length!=64)return 1;
                 int parentId=Int32.Parse(values["--parent"]);long ticks=Int64.Parse(values["--parentticks"]);
+                using(var installerGuard=new Mutex(false,@"Local\cinna-fanCon.Running"))
                 using(var parent=Process.GetProcessById(parentId))
                 {
                     if(parent.StartTime.ToUniversalTime().Ticks!=ticks)return 1;

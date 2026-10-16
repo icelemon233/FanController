@@ -18,11 +18,10 @@ export default function CurveEditor({ points, minimum, onChange }: {points: Curv
           const d=Math.max(i===0?0:points[i-1].Duty,Math.min(i===points.length-1?100:points[i+1].Duty,Math.round((height-bottom-py)/(height-top-bottom)*100)));
           onChange(points.map((p,j)=>j===i?{Temperature:t,Duty:d}:p));
         }} onPointerUp={()=>{drag.current=null;}} onLostPointerCapture={()=>{drag.current=null;}}>
-        <defs><linearGradient id="curve-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={token.colorPrimary} stopOpacity=".15"/><stop offset="100%" stopColor={token.colorPrimary} stopOpacity=".01"/></linearGradient></defs>
         {[0,25,50,75,100].map(d=><g key={d}><line x1={left} y1={y(d)} x2={width-right} y2={y(d)} stroke={token.colorBorderSecondary}/><text x={left-9} y={y(d)+4} fill={token.colorTextTertiary} textAnchor="end" fontSize="10">{d}</text></g>)}
         {[20,35,50,65,80,95,110].map(t=><text key={t} x={x(t)} y={height-10} fill={token.colorTextTertiary} textAnchor="middle" fontSize="10">{t}°</text>)}
         <line x1={left} y1={y(minimum)} x2={width-right} y2={y(minimum)} stroke={token.colorPrimaryBorder} strokeDasharray="4 4"/>
-        {points.length>0&&<><path d={`${line} L${x(points.at(-1)!.Temperature)},${y(0)} L${x(points[0].Temperature)},${y(0)} Z`} fill="url(#curve-fill)"/><path d={line} fill="none" stroke={token.colorPrimary} strokeWidth="2.5" strokeLinejoin="round"/>
+        {points.length>0&&<><path d={`${line} L${x(points.at(-1)!.Temperature)},${y(0)} L${x(points[0].Temperature)},${y(0)} Z`} fill={token.colorPrimaryBg}/><path d={line} fill="none" stroke={token.colorPrimary} strokeWidth="2.5" strokeLinejoin="round"/>
           {points.map((p,i)=><circle key={i} cx={x(p.Temperature)} cy={y(Math.max(minimum,p.Duty))} r={6} fill={token.colorBgContainer} stroke={token.colorPrimary} strokeWidth="2.5" style={{cursor:'grab',touchAction:'none'}} onPointerDown={event=>{drag.current=i;event.currentTarget.setPointerCapture(event.pointerId);}}/>)}</>}
       </svg>
     </div>

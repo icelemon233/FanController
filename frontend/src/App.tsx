@@ -61,73 +61,77 @@ function Content({dark,onTheme}:{dark:boolean;onTheme:()=>void}){
   const fallbackGpu=frame?.Sensors.find(s=>s.Group==='GPU')?.Device??frame?.Gpu;
   const name=(c:Channel)=>snapshot?.Profiles.find(p=>p.Id===c.Id)?.Name||c.Name;
   const stats=[{key:'CPU',label:'CPU 温度',value:cpu,icon:<DesktopOutlined/>,name:frame?.Cpu,values:history.cpu,color:token.colorPrimary},
-    {key:'GPU',label:'GPU 温度',value:gpu,icon:<FundProjectionScreenOutlined/>,name:fallbackGpu,values:history.gpu,color:token.colorSuccess}];
+    {key:'GPU',label:'GPU 温度',value:gpu,icon:<FundProjectionScreenOutlined/>,name:fallbackGpu,values:history.gpu,color:token.colorPrimary}];
 
-  return <Layout className="app-layout" style={{'--fd-border':token.colorBorderSecondary,'--fd-muted':token.colorTextSecondary,'--fd-primary':token.colorPrimary,'--fd-primary-bg':token.colorPrimaryBg,'--fd-fill':token.colorFillQuaternary,'--fd-container':token.colorBgContainer,'--fd-layout':token.colorBgLayout} as CSSProperties}>
-    <Layout.Sider className="app-sidebar" width={184} breakpoint="lg" collapsedWidth={64} trigger={null} theme={dark?'dark':'light'} style={{background:token.colorBgContainer,borderRight:`1px solid ${token.colorBorderSecondary}`}}>
+  return <Layout className="app-layout" data-ui data-theme={dark?'dark':'light'} style={{'--fd-ink':token.colorText,'--fd-border':token.colorBorderSecondary,'--fd-muted':token.colorTextSecondary,'--fd-primary':token.colorPrimary,'--fd-primary-bg':token.colorPrimaryBg,'--fd-fill':token.colorFillQuaternary,'--fd-container':token.colorBgContainer,'--fd-layout':token.colorBgLayout} as CSSProperties}>
+    <Layout.Sider className="app-sidebar" width={208} breakpoint="lg" collapsedWidth={72} trigger={null} theme="dark">
       <div className="brand"><div className="brand-icon"><FanIcon style={{fontSize:28}}/></div><div><Text strong className="brand-name">cinna-fanCon</Text><Text type="secondary" className="brand-caption">Windows 风扇控制</Text></div></div>
-      <Menu selectedKeys={[page]} onClick={({key})=>setPage(key)} items={[{key:'home',icon:<AppstoreOutlined/>,label:<span data-testid="home-menu">散热概览</span>},{key:'devices',icon:<SettingOutlined/>,label:<span data-testid="advanced-menu">风扇设置</span>}]} style={{background:'transparent',borderInlineEnd:0,padding:'0 8px'}}/>
-      <div className="sidebar-bottom"><Space direction="vertical" size={10}><Tag icon={<SafetyCertificateOutlined/>} variant="filled">本地运行</Tag><Text type="secondary" style={{fontSize:11}}>cinna-fanCon 0.2.2 预览版</Text><Button size="small" type="text" aria-label="使用帮助" icon={<QuestionCircleOutlined/>} onClick={()=>setHelp(true)}>使用帮助</Button></Space></div>
+      <Menu theme="dark" selectedKeys={[page]} onClick={({key})=>setPage(key)} items={[{key:'home',icon:<AppstoreOutlined/>,label:<span data-testid="home-menu">散热概览</span>},{key:'devices',icon:<SettingOutlined/>,label:<span data-testid="advanced-menu">风扇设置</span>}]} style={{background:'transparent',borderInlineEnd:0,padding:'0 12px'}}/>
+      <div className="sidebar-bottom"><Space direction="vertical" size={12}><Space className="local-label"><SafetyCertificateOutlined/><Text>本地运行</Text></Space><Text className="version-label">0.3.0 预览版</Text><Button type="text" aria-label="使用帮助" icon={<QuestionCircleOutlined/>} onClick={()=>setHelp(true)}>使用帮助</Button></Space></div>
     </Layout.Sider>
     <Layout style={{minWidth:0,background:token.colorBgLayout}}>
-      <Layout.Header className="app-header" style={{background:token.colorBgContainer,borderBottom:`1px solid ${token.colorBorderSecondary}`}}
+      <Layout.Header className="app-header"
         onPointerDown={e=>{if(desktop&&!(e.target as HTMLElement).closest('button,a,input'))windowAction('drag');}}>
-        <Space size={10}><Text strong>{page==='home'?'散热概览':'风扇设置'}</Text><Tag variant="filled">本机</Tag></Space>
+        <Space size={10}><Text type="secondary">cinna-fanCon</Text><Text strong>{page==='home'?'散热概览':'风扇设置'}</Text></Space>
         <Space size={12}>
           {frame?.Demo&&<Tooltip title="使用模拟读数，操作只影响演示风扇"><Tag color="gold">演示模式</Tag></Tooltip>}
-          <Badge status={frame&&!stale?'success':'processing'} text={<Text type="secondary" style={{fontSize:12}}>{stale?'读数已暂停':frame?'每秒更新':'正在检测'}</Text>}/>
+          <Badge status={frame&&!stale?'success':'processing'} text={<Text type="secondary">{stale?'读数已暂停':frame?'每秒更新':'正在检测'}</Text>}/>
           <Tooltip title={dark?'切换为浅色主题':'切换为深色主题'}><Button type="text" aria-label="切换主题" icon={dark?<SunOutlined/>:<MoonOutlined/>} onClick={onTheme}/></Tooltip>
           {desktop&&<Space size={0} className="window-actions"><Button type="text" aria-label="最小化" icon={<MinusOutlined/>} onClick={()=>windowAction('minimize')}/><Button type="text" aria-label="最大化或还原" icon={<ExpandOutlined/>} onClick={()=>windowAction('maximize')}/><Button type="text" aria-label="关闭应用" className="window-close" icon={<CloseOutlined/>} onClick={()=>windowAction('close')}/></Space>}
         </Space>
       </Layout.Header>
       <Layout.Content className="main-scroll">
         <main className="main-content">
-          <div className="page-heading"><Title level={3}>{page==='home'?'风扇模式':'单组风扇设置'}</Title>
+          <div className="page-heading"><Title level={3}>{page==='home'?'温度与风扇':'单组风扇设置'}</Title>
             {page==='devices'&&<Button icon={<ReloadOutlined/>} loading={busy==='rescan'} disabled={Boolean(busy)} onClick={()=>perform('rescan')}>重新检测</Button>}</div>
           {!frame&&<Card><Skeleton active paragraph={{rows:6}}/></Card>}
           {stale&&<Alert showIcon type="warning" title="未收到风扇服务的最新读数" description="当前无法确认风扇状态，调整功能已暂停。服务仍在运行时会继续控制；与应用断开连接时会尝试恢复原设置。"/>}
           {needsSetup&&<Alert className="setup-alert" type="info" showIcon title="启用主板访问，检测受支持的 CPU 和机箱风扇" action={<Button type="primary" ghost size="small" loading={busy==='enableMotherboard'} onClick={()=>setSetup(true)}>启用主板访问</Button>}/>}
           {abnormal.length>0&&<Alert type="warning" showIcon title="风扇保护与故障" description={abnormal.map(c=>`${name(c)}：${c.Error??c.Status}`).join('；')} action={<Button size="small" onClick={()=>setPage('devices')}>查看详情</Button>}/>}
           {page==='home'&&frame&&<>
-            <div className="stats-grid">
-              {stats.map(stat=><Card key={stat.key} className="stat-card" styles={{body:{padding:20}}}>
-                <Flex justify="space-between" align="center"><Space><span className="stat-icon" style={{color:stat.color,background:stat.key==='CPU'?token.colorPrimaryBg:token.colorSuccessBg}}>{stat.icon}</span><Text type="secondary">{stat.label}</Text></Space>{stat.value!==null&&<Tag variant="filled" color={stat.value>=90?'red':stat.value>=75?'orange':'green'}>{stat.value>=90?'高温':stat.value>=75?'较热':'正常'}</Tag>}</Flex>
-                <div className="stat-value-row"><Statistic value={stat.value??'—'} precision={0} suffix={stat.value!==null?<span className="temperature-unit">°C</span>:null}/><MiniTrend values={stat.values} color={stat.color}/></div>
-                <Text type="secondary" className="stat-subtitle" ellipsis>{stat.value===null?(stat.key==='CPU'&&needsSetup?'请先启用主板访问':'暂无有效温度读数'):stat.name}</Text>
-              </Card>)}
-              <Card className="stat-card" styles={{body:{padding:20}}}><Flex justify="space-between" align="center"><Space><span className="stat-icon" style={{color:token.colorPrimary,background:token.colorPrimaryBg}}><FanIcon spin={active>0}/></span><Text type="secondary">已接管风扇</Text></Space><Tag color={active?'blue':'default'} variant="filled">{active?'调节中':'未开启'}</Tag></Flex>
-                <div className="stat-value-row"><Statistic value={active} suffix={<span className="temperature-unit">组风扇</span>}/><CheckCircleOutlined style={{color:active?token.colorSuccess:token.colorTextQuaternary,fontSize:30}}/></div>
-                <Text type="secondary" className="stat-subtitle">{active?cooling==='自定义'?'使用自定义设置':`${cooling??selectedMode}模式`:`${eligible} 组可开启自动调节`}</Text></Card>
+            <div className="overview-board">
+              <Card className="thermal-panel" styles={{body:{padding:0}}}>
+                <div className="thermal-readings">{stats.map(stat=><div key={stat.key} className="temperature-reading">
+                  <Flex className="temperature-head" justify="space-between" align="center"><Text>{stat.label}</Text>{stat.value!==null&&<Tag variant="filled" color={stat.value>=90?'red':stat.value>=75?'orange':undefined}>{stat.value>=90?'高温':stat.value>=75?'较热':'正常'}</Tag>}</Flex>
+                  <div className="stat-value-row"><Statistic value={stat.value??'—'} precision={0} suffix={stat.value!==null?<span className="temperature-unit">°C</span>:null}/><MiniTrend values={stat.values} color={stat.color}/></div>
+                  <Text type="secondary" className="stat-subtitle" ellipsis>{stat.value===null?(stat.key==='CPU'&&needsSetup?'请先启用主板访问':'暂无有效温度读数'):stat.name}</Text>
+                </div>)}</div>
+              </Card>
+              <Card className="control-status-panel"><Flex justify="space-between" align="center"><Text>已接管风扇</Text><Tag color={active?'blue':undefined} variant="filled">{active?'调节中':'未开启'}</Tag></Flex>
+                <div className="stat-value-row"><Statistic value={active} suffix={<span className="temperature-unit">组</span>}/><FanIcon spin={active>0} style={{fontSize:32,color:active?token.colorPrimary:token.colorTextSecondary}}/></div>
+                <Flex justify="space-between" align="center" gap={12}><Text type="secondary" className="stat-subtitle">{active?cooling==='自定义'?'使用自定义设置':`${cooling??selectedMode}模式`:`${eligible} 组可自动调节`}</Text><Button type="text" size="small" onClick={()=>setPage('devices')}>查看风扇</Button></Flex>
+              </Card>
             </div>
             <Card className="cooling-card" styles={{body:{padding:24}}}>
               <Flex className="cooling-heading" justify="space-between" align="center" gap={16}>
-                <Space size={14}><div className={`cooling-icon ${active?'is-active':''}`}><FanIcon spin={active>0} style={{fontSize:28}}/></div><div><Title level={4}>{active?cooling==='自定义'?'正在使用自定义设置':'自动调节已开启':'尚未开启自动调节'}</Title><Text type="secondary">{active?cooling==='自定义'?'选择主页模式会替换参与风扇的单组设置。':'点击模式即可切换，风扇输出随温度变化。':'选择模式后，点击“开启自动调节”。'}</Text></div></Space>
+                <div><Title level={4}>风扇模式</Title><Text type="secondary">{active?cooling==='自定义'?'选择主页模式会替换参与风扇的单组设置。':'点击模式即可切换，风扇输出随温度变化。':'选择模式后，点击“开启自动调节”。'}</Text></div>
                 <Space>{active>0&&<Button data-testid="release-all" disabled={Boolean(busy)||stale} loading={busy==='release'} onClick={()=>perform('release')}>恢复原设置</Button>}<Button data-testid="smart-start" type="primary" size="large" icon={active?<ReloadOutlined/>:<PoweroffOutlined/>} loading={busy==='smart'} disabled={!frame||eligible===0||Boolean(busy)||stale} onClick={()=>perform('smart',{Mode:selectedMode})}>{active?'应用所选模式':'开启自动调节'}</Button></Space>
               </Flex>
               <div className="mode-grid">{modes.map(mode=><Button key={mode.name} data-testid={`mode-${mode.name}`} className={`mode-option ${selectedMode===mode.name?'mode-selected':''}`} disabled={Boolean(busy)||stale} onClick={()=>chooseMode(mode.name)} aria-pressed={selectedMode===mode.name}>
-                <Flex vertical gap={8} align="flex-start"><Flex gap={10} align="center"><span className="mode-icon">{mode.icon}</span><Text strong>{mode.name}</Text>{mode.name==='均衡'&&<Tag color={selectedMode==='均衡'?'blue':'default'} variant="filled">默认</Tag>}</Flex><Text className="mode-description">{mode.description}</Text><Text type="secondary" className="mode-detail">{mode.detail}</Text></Flex>{selectedMode===mode.name&&<CheckCircleOutlined className="selected-check"/>}
+                <div className="mode-option-content"><Flex gap={10} align="center"><span className="mode-icon">{mode.icon}</span><Text strong>{mode.name}</Text>{mode.name==='均衡'&&<Text className="mode-default">默认</Text>}</Flex><Text className="mode-description">{mode.description}</Text><Text type="secondary" className="mode-detail">{mode.detail}</Text></div>{selectedMode===mode.name&&<CheckCircleOutlined className="selected-check"/>}
               </Button>)}</div>
               <Flex className="protection-note" justify="space-between" gap={16} wrap><Space><SafetyCertificateOutlined/><Text type="secondary">已接管风扇遇到高温或必要温度缺失时，会设为最高输出。</Text></Space><Button type="link" size="small" onClick={()=>setPage('devices')}>设置单组风扇</Button></Flex>
             </Card>
             <div className="section-heading"><Title level={5}>设备状态</Title></div>
-            <div className="device-grid">{[{group:'GPU',title:'显卡风扇',icon:<FundProjectionScreenOutlined/>,device:fallbackGpu},{group:'主板',title:'CPU 与机箱风扇',icon:<DesktopOutlined/>,device:frame?.Board}].map(device=>{
+            <div className="device-list">{[{group:'GPU',title:'显卡风扇',icon:<FundProjectionScreenOutlined/>,device:fallbackGpu},{group:'主板',title:'CPU 与机箱风扇',icon:<DesktopOutlined/>,device:frame?.Board}].map(device=>{
               const groupChannels=channels.filter(c=>c.Group===device.group);const managed=groupChannels.filter(c=>c.Owned).length;
               const rpms=snapshot?groupChannels.map(c=>rpmFor(c,snapshot)).filter((r):r is number=>r!==null):[];
-              return <Card key={device.group} size="small" className="device-card"><Flex justify="space-between" align="center" gap={12}><Space><span className="device-icon">{device.icon}</span><Flex vertical gap={2}><Text strong>{device.title}</Text><Text type="secondary" className="device-model" ellipsis>{device.device??'未识别设备'}</Text></Flex></Space><Tag color={managed?'blue':groupChannels.length?'green':'default'} variant="filled">{managed?groupChannels.some(c=>c.Owned&&c.Mode===1)?'单组设置':'自动调节':groupChannels.length?'未接管':device.group==='主板'&&needsSetup?'待授权':'无可控风扇'}</Tag></Flex>
-                <Flex className="device-summary" justify="space-between"><Text type="secondary">{groupChannels.length?`${groupChannels.length} 组可控，${managed} 组已接管`:device.group==='主板'&&needsSetup?'请先启用主板访问':'未检测到可控接口'}</Text><Text>{rpms.length?rpms.length===1?`${Math.round(rpms[0]).toLocaleString()} RPM`:`${Math.round(Math.min(...rpms))}–${Math.round(Math.max(...rpms))} RPM`:'—'}</Text></Flex></Card>;
+              return <Card key={device.group} size="small" className="device-row"><div className="device-identity"><span className="device-icon">{device.icon}</span><div><Text strong>{device.title}</Text><Text type="secondary" className="device-model" ellipsis>{device.device??'未识别设备'}</Text></div></div>
+                <div className="device-state"><Tag color={managed?'blue':undefined} variant="filled">{managed?groupChannels.some(c=>c.Owned&&c.Mode===1)?'单组设置':'自动调节':groupChannels.length?'未接管':device.group==='主板'&&needsSetup?'待授权':'无可控风扇'}</Tag><Text type="secondary">{groupChannels.length?`${groupChannels.length} 组可控，${managed} 组已接管`:device.group==='主板'&&needsSetup?'请先启用主板访问':'未检测到可控接口'}</Text></div>
+                <Text className="device-rpm">{rpms.length?rpms.length===1?`${Math.round(rpms[0]).toLocaleString()} RPM`:`${Math.round(Math.min(...rpms))}–${Math.round(Math.max(...rpms))} RPM`:'暂无转速'}</Text><Button type="text" onClick={()=>setPage('devices')}>查看</Button></Card>;
             })}</div>
           </>}
           {page==='devices'&&frame&&snapshot&&<>
-            <Card title="可控风扇" extra={<Tag variant="filled">共 {channels.length} 组</Tag>} styles={{body:{padding:0}}}>
+            <Card className="fan-table" title="可控风扇" extra={<Text type="secondary">共 {channels.length} 组</Text>} styles={{body:{padding:0}}}>
               <Table<Channel> rowKey="Id" pagination={false} dataSource={channels} locale={{emptyText:<Empty description="未检测到可控风扇"/>}} columns={[
-                {title:'风扇',key:'name',render:(_,c)=><Flex vertical gap={4}><Text strong>{name(c)}</Text><Text type="secondary" style={{fontSize:12}}>{c.Group==='GPU'?'显卡风扇':'主板风扇'}</Text></Flex>},
+                {title:'风扇',key:'name',render:(_,c)=><Flex vertical gap={4}><Text strong>{name(c)}</Text><Text type="secondary">{c.Group==='GPU'?'显卡风扇':'主板风扇'}</Text></Flex>},
                 {title:'当前状态',key:'status',render:(_,c)=><Tag color={c.Error?'red':c.Status.includes('保护')?'orange':c.Owned?'blue':'default'}>{c.Error?'控制异常':c.Owned?c.Status:'未接管'}</Tag>},
                 {title:'转速',key:'rpm',render:(_,c)=>{const v=rpmFor(c,snapshot);return v===null?<Text type="secondary">暂无读数</Text>:<Text>{Math.round(v).toLocaleString()} RPM</Text>;}},
                 {title:'主页模式温度来源',key:'source',render:(_,c)=>{const r=snapshot.Recommendations.find(r=>r.Id===c.Id);return <Text type="secondary">{r?.Eligible?r.SourceLabel:r?.Reason??'暂无匹配结果'}</Text>;}},
                 {title:'',key:'action',width:80,render:(_,c)=><Button type="link" data-testid={`configure-${c.Id}`} aria-label={`设置${name(c)}`} onClick={()=>openChannel(c)}>设置</Button>},
               ]}/>
             </Card>
-            <Collapse items={[{key:'sensors',label:`传感器与检测详情（${frame.Sensors.length} 项）`,children:<Flex vertical gap={16}>
+            <Collapse className="sensor-details" items={[{key:'sensors',label:`传感器与检测详情（${frame.Sensors.length} 项）`,children:<Flex vertical gap={16}>
               <Descriptions size="small" column={1} items={[{key:'cpu',label:'处理器',children:frame.Cpu},{key:'gpu',label:'显卡',children:fallbackGpu},{key:'board',label:'主板',children:frame.Board},{key:'access',label:'主板访问',children:frame.PawnIoInstalled&&frame.Administrator?'已启用':!frame.PawnIoInstalled?'未安装硬件组件':'未获得访问权限'}]}/>
               <Table size="small" rowKey="Id" pagination={false} dataSource={frame.Sensors} columns={[{title:'名称',dataIndex:'Name'},{title:'设备',dataIndex:'Device',ellipsis:true},{title:'当前读数',key:'value',render:(_,s)=>s.Value===null?'—':`${s.Value.toFixed(s.Kind==='Fan'?0:1)} ${s.Kind==='Fan'?'RPM':s.Kind==='Temperature'?'°C':'%'}`} ]}/>
               {frame.Notices.map((notice,i)=><Text type="secondary" key={i}>{notice}</Text>)}
@@ -145,7 +149,27 @@ function Content({dark,onTheme}:{dark:boolean;onTheme:()=>void}){
   </Layout>;
 }
 export default function App(){
-  const [dark,setDark]=useState(()=>localStorage.getItem('cinna-fancon-theme')==='dark');
+  const [dark,setDark]=useState(()=>localStorage.getItem('cinna-fancon-theme')!=='light');
   const toggle=()=>setDark(d=>{localStorage.setItem('cinna-fancon-theme',d?'light':'dark');return !d;});
-  return <ConfigProvider locale={zhCN} theme={{algorithm:dark?theme.darkAlgorithm:theme.defaultAlgorithm,cssVar:{key:'cinna-fancon'},token:{colorPrimary:'#1677ff',borderRadius:10,fontFamily:'"Segoe UI", "Microsoft YaHei UI", sans-serif',fontSize:13,colorBgLayout:dark?'#11151d':'#f5f7fb'},components:{Card:{paddingLG:24},Button:{controlHeight:34},Menu:{itemHeight:42,itemMarginBlock:6,itemBorderRadius:8},Statistic:{contentFontSize:34}}}}><AntApp><Content dark={dark} onTheme={toggle}/></AntApp></ConfigProvider>;
+  const palette=dark
+    ?{accent:'#5a9bfc',ground:'#0a0d14',surface:'#131824',elevated:'#1b2230',ink:'#e9edf3',muted:'#a6afbf',border:'#293345'}
+    :{accent:'#246bd1',ground:'#edf0f5',surface:'#ffffff',elevated:'#ffffff',ink:'#1b2533',muted:'#586577',border:'#dce2eb'};
+  return <ConfigProvider locale={zhCN} theme={{
+    algorithm:dark?theme.darkAlgorithm:theme.defaultAlgorithm,
+    cssVar:{key:'cinna-fancon'},
+    token:{
+      colorPrimary:palette.accent,colorInfo:palette.accent,colorBgLayout:palette.ground,
+      colorBgContainer:palette.surface,colorBgElevated:palette.elevated,colorText:palette.ink,
+      colorTextSecondary:palette.muted,colorTextTertiary:palette.muted,colorTextDescription:palette.muted,
+      colorBorderSecondary:palette.border,borderRadius:8,borderRadiusLG:8,
+      fontFamily:'"Segoe UI", "Microsoft YaHei UI", sans-serif',fontSize:14,
+      boxShadow:'none',boxShadowSecondary:dark?'0 16px 48px rgba(0,0,0,.4)':'0 16px 48px rgba(27,37,51,.12)',
+    },
+    components:{
+      Card:{paddingLG:22,headerFontSize:18},
+      Button:{controlHeight:38,primaryColor:dark?'#0a0d14':'#ffffff',primaryShadow:'none',defaultShadow:'none'},
+      Menu:{itemHeight:46,itemMarginBlock:8,itemBorderRadius:8,darkItemBg:'transparent',darkItemColor:'#a6afbf',darkItemSelectedBg:'#1e304c',darkItemSelectedColor:'#d9e7ff',darkItemHoverBg:'#151d2a'},
+      Statistic:{contentFontSize:52},Table:{cellPaddingBlock:18},
+    },
+  }}><AntApp><Content dark={dark} onTheme={toggle}/></AntApp></ConfigProvider>;
 }

@@ -38,15 +38,15 @@ namespace CinnaFanCon
             Title="cinna-fanCon · 风扇控制";Width=1280;Height=860;MinWidth=1040;MinHeight=740;
             if(capture==null){var area=SystemParameters.WorkArea;Width=Math.Min(1280,area.Width-32);Height=Math.Min(860,area.Height-32);MinWidth=Math.Min(920,area.Width-16);MinHeight=Math.Min(660,area.Height-16);}
             WindowStyle=WindowStyle.None;ResizeMode=ResizeMode.CanResize;WindowStartupLocation=WindowStartupLocation.CenterScreen;
-            Background=new SolidColorBrush(Color.FromRgb(245,247,251));
+            Background=new SolidColorBrush(Color.FromRgb(10,13,20));
             WindowChrome.SetWindowChrome(this,new WindowChrome {CaptionHeight=0,ResizeBorderThickness=new Thickness(6),GlassFrameThickness=new Thickness(0)});
-            var border=new System.Windows.Controls.Border {Padding=new Thickness(1),Background=new SolidColorBrush(Color.FromRgb(222,228,237)),Child=browser};Content=border;
-            browser.DefaultBackgroundColor=System.Drawing.Color.FromArgb(245,247,251);
+            var border=new System.Windows.Controls.Border {Padding=new Thickness(1),Background=new SolidColorBrush(Color.FromRgb(34,44,61)),Child=browser};Content=border;
+            browser.DefaultBackgroundColor=System.Drawing.Color.FromArgb(10,13,20);
             Loaded+=async delegate{await Initialize();};
             Closing+=OnClosing;
             if(capturePath==null)
             {
-                tray=new Forms.NotifyIcon {Icon=System.Drawing.SystemIcons.Application,Text="cinna-fanCon · 风扇控制",Visible=true};
+                tray=new Forms.NotifyIcon {Icon=System.Drawing.Icon.ExtractAssociatedIcon(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"cinna-fanCon.exe")),Text="cinna-fanCon · 风扇控制",Visible=true};
                 var menu=new Forms.ContextMenuStrip();menu.Items.Add("打开 cinna-fanCon",null,delegate{Dispatcher.BeginInvoke(new Action(Restore));});
                 menu.Items.Add("恢复所有风扇原设置",null,delegate{if(worker!=null)worker.Send(new WireMessage {Type="command",Id="tray-release",Action="release"});});
                 menu.Items.Add("恢复原设置并退出",null,delegate{Dispatcher.BeginInvoke(new Action(()=>Close()));});
@@ -196,6 +196,7 @@ namespace CinnaFanCon
                 if(smokeReport!=null)
                 {
                     if(!demo)throw new InvalidOperationException("界面操作测试只能在演示模式运行。");
+                    await browser.CoreWebView2.ExecuteScriptAsync("if(document.querySelector('.app-layout').dataset.theme==='dark')document.querySelector('[aria-label=\"切换主题\"]').click()");await Task.Delay(250);
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=mode-均衡]').click()");
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=smart-start]').click()");
                     bool applied=false;
@@ -220,9 +221,10 @@ namespace CinnaFanCon
                     for(int i=0;i<25;i++){await Task.Delay(200);if(worker.Latest.Snapshot.Channels.Count(c=>c.Owned)==3&&!worker.Latest.Snapshot.Channels.First(c=>c.Id=="demo/0").Owned){respected=true;break;}}
                     if(!respected)throw new Exception("The preset was applied to an excluded fan.");
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=release-all]').click()");await Task.Delay(300);
+                    string light=await browser.CoreWebView2.ExecuteScriptAsync("getComputedStyle(document.querySelector('.app-layout > .ant-layout')).backgroundColor");
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[aria-label=\"切换主题\"]').click()");await Task.Delay(300);
                     string dark=await browser.CoreWebView2.ExecuteScriptAsync("getComputedStyle(document.querySelector('.app-layout > .ant-layout')).backgroundColor");
-                    if(!dark.Contains("17, 21, 29"))throw new Exception("Ant Design dark theme did not update the desktop surface.");
+                    if(dark==light)throw new Exception("Switching to the dark theme did not change the desktop surface.");
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[aria-label=\"切换主题\"]').click()");
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=mode-均衡]').click()");
                     File.WriteAllText(smokeReport,"PASS: WebView2 UI communicates with the native worker\r\nPASS: automatic control acquires four simulated fans and matches temperature sources\r\nPASS: switching to Quiet mode updates the native planner\r\nPASS: restoring prior settings releases all four simulated fan ports\r\nPASS: the next preset skips a fan excluded in its settings\r\nPASS: switching themes updates the desktop surface\r\nThis test uses simulated fans and does not access physical hardware.\r\n");

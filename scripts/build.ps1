@@ -19,7 +19,7 @@ $wpf=Join-Path $framework 'WPF'
 $compiler=Join-Path $framework 'csc.exe'
 if(-not (Test-Path -LiteralPath $compiler)){throw '.NET Framework 4.8 and its C# compiler are required.'}
 $common=@('Core.cs','Adlx.cs','Hardware.cs','CoolingPlanner.cs','CoreTests.cs','PlannerTests.cs','Wire.cs') | ForEach-Object {Join-Path $source $_}
-$arguments=@('/nologo','/target:winexe','/platform:x64','/optimize+','/codepage:65001','/r:System.Core.dll','/r:System.Management.dll','/r:System.Runtime.Serialization.dll',('/r:'+(Join-Path $output 'LibreHardwareMonitorLib.dll')),('/win32manifest:'+(Join-Path $source 'app.manifest')))
+$arguments=@('/nologo','/target:winexe','/platform:x64','/optimize+','/codepage:65001','/r:System.Core.dll','/r:System.Management.dll','/r:System.Runtime.Serialization.dll',('/r:'+(Join-Path $output 'LibreHardwareMonitorLib.dll')),('/win32manifest:'+(Join-Path $source 'app.manifest')),('/win32icon:'+(Join-Path $source 'assets\app.ico')))
 $workerArguments=$arguments+@('/main:CinnaFanCon.WorkerProgram',('/out:'+(Join-Path $output 'cinna-fanCon.Worker.exe')))
 & $compiler @workerArguments @common (Join-Path $source 'WorkerProgram.cs')
 if($LASTEXITCODE -ne 0){throw 'Worker compilation failed.'}
