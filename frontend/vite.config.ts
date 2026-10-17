@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import version from '../version.json' with { type: 'json' };
@@ -9,6 +11,15 @@ export default defineConfig(({ command, mode }) => {
       {
         name: 'fancon-build-contract',
         generateBundle(_options, bundle) {
+          const sourceIcon = readFileSync(
+            new URL('../docs/brand/cinna-app-icon.png', import.meta.url),
+          );
+          const webIcon = readFileSync(new URL('./src/assets/app-icon.png', import.meta.url));
+          if (!sourceIcon.equals(webIcon)) {
+            throw new Error(
+              'Regenerate app icons from the Cinna source with scripts/create-icon.ps1 before building.',
+            );
+          }
           if (
             !browserDemo &&
             Object.values(bundle).some(
@@ -25,6 +36,7 @@ export default defineConfig(({ command, mode }) => {
             source: JSON.stringify({
               version: version.version,
               target: browserDemo ? 'demo' : 'native',
+              iconSha256: createHash('sha256').update(webIcon).digest('hex'),
             }),
           });
         },

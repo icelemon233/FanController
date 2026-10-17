@@ -190,8 +190,8 @@ Section "$(AppSection)" Application
   File /r "${Payload}\*"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   CreateDirectory "$SMPROGRAMS\cinna-fanCon"
-  CreateShortcut "$SMPROGRAMS\cinna-fanCon\cinna-fanCon.lnk" "$INSTDIR\cinna-fanCon.exe"
-  CreateShortcut "$SMPROGRAMS\cinna-fanCon\卸载 cinna-fanCon.lnk" "$INSTDIR\Uninstall.exe"
+  CreateShortcut "$SMPROGRAMS\cinna-fanCon\cinna-fanCon.lnk" "$INSTDIR\cinna-fanCon.exe" "" "$INSTDIR\cinna-fanCon.exe" 0
+  CreateShortcut "$SMPROGRAMS\cinna-fanCon\卸载 cinna-fanCon.lnk" "$INSTDIR\Uninstall.exe" "" "$INSTDIR\Uninstall.exe" 0
   WriteRegStr HKCU "${UninstallKey}" "DisplayName" "cinna-fanCon"
   WriteRegStr HKCU "${UninstallKey}" "DisplayVersion" "${AppVersion}"
   WriteRegStr HKCU "${UninstallKey}" "Publisher" "icelemon233"
@@ -203,10 +203,13 @@ Section "$(AppSection)" Application
   WriteRegDWORD HKCU "${UninstallKey}" "NoModify" 1
   WriteRegDWORD HKCU "${UninstallKey}" "NoRepair" 1
   WriteRegDWORD HKCU "${UninstallKey}" "EstimatedSize" ${InstalledSizeKB}
+  System::Call 'shell32::SHChangeNotify(i 0x00002000, i 0x0005, w "$INSTDIR\cinna-fanCon.exe", p 0)'
+  System::Call 'shell32::SHChangeNotify(i 0x00002000, i 0x0005, w "$SMPROGRAMS\cinna-fanCon\cinna-fanCon.lnk", p 0)'
 SectionEnd
 
 Section /o "$(DesktopShortcut)" Desktop
-  CreateShortcut "$DESKTOP\cinna-fanCon.lnk" "$INSTDIR\cinna-fanCon.exe"
+  CreateShortcut "$DESKTOP\cinna-fanCon.lnk" "$INSTDIR\cinna-fanCon.exe" "" "$INSTDIR\cinna-fanCon.exe" 0
+  System::Call 'shell32::SHChangeNotify(i 0x00002000, i 0x0005, w "$DESKTOP\cinna-fanCon.lnk", p 0)'
 SectionEnd
 
 Function un.onInit

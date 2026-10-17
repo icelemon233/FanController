@@ -50,6 +50,13 @@ button {
   place-items: center;
   color: var(--fd-nav-accent);
 }
+.brand-image {
+  display: block;
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  pointer-events: none;
+}
 .brand-name.ant-typography {
   color: var(--fd-nav-ink);
   font-size: 18px;

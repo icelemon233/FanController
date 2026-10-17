@@ -1,5 +1,9 @@
 # Interface design
 
+## Application icon — v0.4.1
+
+The approved Cinna artwork in `docs/brand/cinna-app-icon.png` is the source for the executable, native window, tray, installer, shortcuts, sidebar and favicon. The build exports transparent ICO frames from 16 to 256 pixels and copies the original PNG for the frontend. The native window and tray load the embedded ICO; frontend assets use content-based filenames. Packaging checks the source icon hash to reject stale frontend builds.
+
 ## Control plans — v0.4.0
 
 The overview replaces the three immediate presets with an editable quiet-first plan. CPU, case, GPU, pump and unidentified roles have distinct defaults. The plan editor places channel selection beside the selected fan’s source, minimum output, smoothing and curve; names and RPM sensor mapping stay in an optional details panel. A separate review lists every channel and exact applied parameters, including restorations. The live overview shows actual running profiles, output and measured RPM.

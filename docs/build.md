@@ -68,7 +68,7 @@ Profiles are saved in `%LOCALAPPDATA%\cinna-fanCon\profiles.json`. If that file 
 
 应用安装到 `%LOCALAPPDATA%\Programs\cinna-fanCon`。交互式安装会提示关闭运行中的旧版；确认后通过正常退出流程恢复风扇，并等待主程序和服务结束，最长等待约 30 秒。退出失败时停止安装，程序文件不会被修改。静默安装和卸载仍会拒绝操作运行中的应用，安装期间也会阻止启动应用。卸载仅删除安装清单中的文件，再移除空目录；`%LOCALAPPDATA%\cinna-fanCon` 中的配置会保留。
 
-安装源码位于 `installer/setup.nsi`。应用图标源自 `frontend/public/app.svg`，`scripts/create-icon.ps1` 用于生成 Windows ICO。仓库尚未配置代码签名，签名需要相应证书。
+安装源码位于 `installer/setup.nsi`。应用图标统一源自 `docs/brand/cinna-app-icon.png`。构建时会运行 `scripts/create-icon.ps1`，生成包含 16–256 像素图层的 Windows ICO，并同步前端 PNG。窗口、托盘、安装程序和快捷方式使用同一图标；前端构建和打包会核对图片哈希。仓库尚未配置代码签名，签名需要相应证书。
 
 前端开发使用上方 pnpm 命令。`check` 检查实际源码、测试与 Vite 配置，并运行模块边界、循环依赖、格式和行为测试。开发服务器可使用明确标注的演示设备；构建后的浏览器演示使用 `build:demo` 与 `preview:demo`，输出到独立目录。桌面生产包缺少原生桥接时显示错误，不自动回退为模拟设备。
 

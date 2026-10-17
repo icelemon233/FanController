@@ -26,7 +26,7 @@ import {
 } from 'antd';
 import { lazy, type PointerEvent, Suspense, useState } from 'react';
 import version from '../../../version.json';
-import { FanIcon } from '../components/FanIcon.tsx';
+import appIcon from '../assets/app-icon.png';
 import { ConnectionNotice } from '../features/fans/ConnectionNotice.tsx';
 import { useFanControl } from '../features/fans/FanControlProvider.tsx';
 import { channelName, summarizeFans } from '../features/fans/model.ts';
@@ -84,7 +84,15 @@ export default function AppShell({
         <div className="sidebar-titlebar" data-window-drag>
           <div className="brand">
             <div className="brand-icon">
-              <FanIcon style={{ fontSize: 28 }} />
+              <img
+                className="brand-image"
+                data-testid="app-brand-icon"
+                src={appIcon}
+                alt=""
+                draggable={false}
+                width={36}
+                height={36}
+              />
             </div>
             <div>
               <Text strong className="brand-name">

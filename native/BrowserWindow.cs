@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Shell;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
@@ -30,6 +31,7 @@ namespace CinnaFanCon
         private readonly string capturePath,smokeReport;
         private WorkerClient worker;
         private Forms.NotifyIcon tray;
+        private System.Drawing.Icon trayIcon;
         private bool ready,closing,stopPending,captureStarted,setupPending;
         private bool rememberMotherboard;
         private static string MotherboardPreference {get{return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"cinna-fanCon","motherboard-access.enabled");}}
@@ -38,6 +40,11 @@ namespace CinnaFanCon
         public BrowserWindow(bool demonstration,string capture,string smoke)
         {
             demo=demonstration;capturePath=capture;smokeReport=smoke;
+            using(var iconStream=OpenAppIcon())
+            {
+                Icon=BitmapFrame.Create(iconStream,BitmapCreateOptions.PreservePixelFormat,BitmapCacheOption.OnLoad);
+                Icon.Freeze();
+            }
             Title="cinna-fanCon · 风扇控制";Width=1280;Height=860;MinWidth=1040;MinHeight=740;
             if(capture==null){var area=SystemParameters.WorkArea;Width=Math.Min(1280,area.Width-32);Height=Math.Min(860,area.Height-32);MinWidth=Math.Min(920,area.Width-16);MinHeight=Math.Min(660,area.Height-16);}
             WindowStyle=WindowStyle.None;ResizeMode=ResizeMode.CanResize;WindowStartupLocation=WindowStartupLocation.CenterScreen;
@@ -49,7 +56,8 @@ namespace CinnaFanCon
             Closing+=OnClosing;
             if(capturePath==null)
             {
-                tray=new Forms.NotifyIcon {Icon=System.Drawing.Icon.ExtractAssociatedIcon(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"cinna-fanCon.exe")),Text="cinna-fanCon · 风扇控制",Visible=true};
+                using(var iconStream=OpenAppIcon())trayIcon=new System.Drawing.Icon(iconStream,Forms.SystemInformation.SmallIconSize);
+                tray=new Forms.NotifyIcon {Icon=trayIcon,Text="cinna-fanCon · 风扇控制",Visible=true};
                 var menu=new TrayContextMenu(
                     ()=>Dispatcher.BeginInvoke(new Action(Restore)),
                     ()=>{if(worker!=null)worker.Send(new WireMessage {Type="command",Id="tray-release",Action="release"});},
@@ -58,6 +66,12 @@ namespace CinnaFanCon
                 StateChanged+=delegate{if(WindowState==WindowState.Minimized)Hide();};
             }
             else{ShowInTaskbar=false;WindowStartupLocation=WindowStartupLocation.Manual;Left=-30000;Top=-30000;}
+        }
+        private static Stream OpenAppIcon()
+        {
+            var stream=typeof(BrowserWindow).Assembly.GetManifestResourceStream("CinnaFanCon.AppIcon");
+            if(stream==null)throw new InvalidOperationException("应用图标缺失，请重新安装。");
+            return stream;
         }
         private void Restore(){Show();WindowState=WindowState.Normal;Activate();}
         private void BeginWindowDrag()
@@ -343,7 +357,7 @@ namespace CinnaFanCon
                 {
                     Post(new WireMessage {Type="notice",Message="尚未完成风扇恢复，应用将继续运行。请稍后重试退出。",Success=false});stopPending=false;return;
                 }
-                closing=true;if(worker!=null)worker.Dispose();if(tray!=null){var menu=tray.ContextMenuStrip;tray.Visible=false;tray.Dispose();if(menu!=null)menu.Dispose();}browser.Dispose();Close();
+                closing=true;if(worker!=null)worker.Dispose();if(tray!=null){var menu=tray.ContextMenuStrip;tray.Visible=false;tray.Dispose();if(menu!=null)menu.Dispose();}if(trayIcon!=null)trayIcon.Dispose();browser.Dispose();Close();
             }
             catch(Exception error){stopPending=false;Post(new WireMessage {Type="notice",Message=error.Message,Success=false});}
         }
