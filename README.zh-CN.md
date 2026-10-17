@@ -1,6 +1,8 @@
-# cinna-fanCon
+<p align="center"><img src="./docs/brand/cinna-app-icon.png" alt="cinna-fanCon Cinna icon" width="128"></p>
 
-[English](./README.md) | 简体中文
+<h1 align="center">cinna-fanCon</h1>
+
+<p align="center"><a href="./README.md">English</a> · 简体中文</p>
 
 根据温度调节受支持的 CPU、机箱和显卡风扇的 Windows 应用。可以选择预设模式，也可以单独设置某组风扇的曲线或固定输出。
 

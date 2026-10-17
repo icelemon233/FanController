@@ -1,6 +1,8 @@
-# cinna-fanCon
+<p align="center"><img src="./docs/brand/cinna-app-icon.png" alt="cinna-fanCon Cinna icon" width="128"></p>
 
-English | [简体中文](./README.zh-CN.md)
+<h1 align="center">cinna-fanCon</h1>
+
+<p align="center">English · <a href="./README.zh-CN.md">简体中文</a></p>
 
 A Windows application that adjusts supported CPU, case and GPU fans by temperature. Choose a preset or configure individual fan groups with a temperature curve or fixed output.
 
