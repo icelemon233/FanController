@@ -39,6 +39,7 @@ namespace CinnaFanCon
         private List<ControlSession> demoSessions;
         private string demoMode;
         private string saveError;
+        private bool persistenceReadFailed;
 
         public WorkerService(NamedPipeClientStream client,bool demonstration)
         {
@@ -46,7 +47,7 @@ namespace CinnaFanCon
             writer=new StreamWriter(pipe,new UTF8Encoding(false),65536,true) {AutoFlush=true};
             reader=new StreamReader(pipe,Encoding.UTF8,false,65536,true);
             try {store=demo?new ProfileStore():ProfileStore.Load();}
-            catch(Exception e) {store=new ProfileStore();saveError="无法读取已保存的风扇设置："+e.Message;}
+            catch(Exception e) {store=new ProfileStore();persistenceReadFailed=true;saveError="无法读取已保存的风扇设置，原文件已保留："+e.Message;}
         }
         private void Send(WireMessage message)
         {
@@ -63,6 +64,7 @@ namespace CinnaFanCon
             {
                 try
                 {
+                    if(persistenceReadFailed)throw new InvalidDataException("原配置未能读取，已保留原文件；请修复配置后重启应用。");
                     if(demo)
                     {
                         foreach(var p in profiles) {store.Profiles.RemoveAll(x=>x.Id==p.Id);store.Profiles.Add(p.Clone());}
@@ -78,8 +80,9 @@ namespace CinnaFanCon
             lock(stateLock)
             {
                 latest=frame;
+                if(persistenceReadFailed && !frame.Notices.Contains(saveError))frame.Notices.Add(saveError);
                 Send(new WireMessage {Type="snapshot",Snapshot=frame,Profiles=store.Profiles.Select(p=>p.Clone()).ToList(),
-                    Recommendations=frame.Channels.Select(c=>CoolingPlanner.Recommend(frame,c,store.Profiles.FirstOrDefault(p=>p.Id==c.Id),DateTime.UtcNow)).ToList()});
+                    Recommendations=frame.Channels.Select(c=>CoolingPlanner.Recommend(frame,c,c.ActiveProfile??store.Profiles.FirstOrDefault(p=>p.Id==c.Id),DateTime.UtcNow)).ToList()});
             }
         }
         public void Run(string token,Process parent)
@@ -127,9 +130,11 @@ namespace CinnaFanCon
         {
             Save(result.Applied);
             bool success=result.Applied.Count>0 && result.Errors.Count==0;
-            string message=result.Applied.Count==0?"没有可自动调节的风扇，请查看设备状态；CPU 和机箱风扇可能需要先启用主板访问。":"已将 "+result.Applied.Count+" 组风扇设为"+result.Mode+"模式。";
-            if(result.Errors.Count>0)message="以下风扇未能应用设置："+String.Join("；",result.Errors.Select(e=>e.Name+"："+e.Reason));
-            Reply(result.Id,saveError??message,success,result.Applied.Count,result.Skipped.Count,saveError);
+            int controlled=result.Applied.Count(p=>p.Mode!=FanMode.Hardware),original=result.Applied.Count-controlled;
+            string message=result.Applied.Count==0?"方案未应用，请检查风扇和温度读数。":"已调节 "+controlled+" 组风扇，"+original+" 组使用原设置。";
+            if(result.Errors.Count>0)message+=" 未能应用："+String.Join("；",result.Errors.Select(e=>(e.Name??"方案")+"："+e.Reason));
+            if(saveError!=null)message+=" "+saveError;
+            Reply(result.Id,message,success,result.Applied.Count,result.Skipped.Count,saveError);
         }
         private void ReadCommands()
         {
@@ -154,7 +159,26 @@ namespace CinnaFanCon
         {
             if(stopping.WaitOne(0))throw new InvalidOperationException("正在恢复风扇原设置，请等待完成。");
             if(command.Id==null || command.Id.Length>100)throw new InvalidDataException("请求编号无效。");
-            if(command.Action=="smart")
+            if(command.Action=="plan")
+            {
+                List<FanProfile> profiles=command.Profiles;
+                if(profiles==null || profiles.Count==0 || profiles.Count>64 || profiles.Any(p=>p==null))throw new ArgumentException("未收到有效方案，请重新预览。");
+                foreach(var profile in profiles){string invalid=profile.Validate();if(invalid!=null)throw new ArgumentException(invalid);}
+                if(!demo)engine.EnqueuePlan(profiles,command.Id);
+                else lock(stateLock)
+                {
+                    string error=CoolingPlanner.ValidateExplicit(latest,profiles,DateTime.UtcNow);
+                    if(error!=null)throw new ArgumentException(error);
+                    var result=new SmartResult {Id=command.Id,Mode="自定义"};
+                    foreach(var profile in profiles)
+                    {
+                        var session=demoSessions.First(s=>s.Port.Id==profile.Id);
+                        session.Apply(profile);session.Tick(latest.Sensors,DateTime.UtcNow);result.Applied.Add(profile.Clone());
+                    }
+                    demoMode="自定义";OnSmartCompleted(result);PublishDemo();
+                }
+            }
+            else if(command.Action=="smart")
             {
                 if(!CoolingPlanner.ValidMode(command.Mode))throw new ArgumentException("风扇模式无效，请重新选择。");
                 List<FanProfile> saved;lock(stateLock)saved=store.Profiles.Select(p=>p.Clone()).ToList();
@@ -183,6 +207,7 @@ namespace CinnaFanCon
                 {
                     lock(stateLock)
                     {
+                        string invalid=CoolingPlanner.ValidateExplicit(latest,new[]{profile},DateTime.UtcNow);if(invalid!=null)throw new ArgumentException(invalid);
                         var session=demoSessions.FirstOrDefault(s=>s.Port.Id==profile.Id);if(session==null)throw new ArgumentException("未找到这组风扇，请重新检测。");
                         session.Apply(profile);session.Tick(latest.Sensors,DateTime.UtcNow);Save(new[]{profile});demoMode="自定义";PublishDemo();Reply(command.Id,"设置已应用。",true);
                     }

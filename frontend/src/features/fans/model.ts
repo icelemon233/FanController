@@ -1,4 +1,5 @@
 export type CoolingMode = '静音' | '均衡' | '强冷';
+export type FanRole = 'CPU' | 'GPU' | 'Case' | 'Pump' | 'Unknown';
 export interface CurvePoint {
   Temperature: number;
   Duty: number;
@@ -13,6 +14,9 @@ export interface FanProfile {
   Manual: number;
   Points: CurvePoint[];
   Excluded?: boolean | null;
+  Role?: FanRole | null;
+  RiseSeconds?: number | null;
+  FallSeconds?: number | null;
 }
 export interface Sensor {
   Id: string;
@@ -34,6 +38,7 @@ export interface Channel {
   Target: number | null;
   Owned: boolean;
   Error: string | null;
+  ActiveProfile?: FanProfile | null;
 }
 export interface Frame {
   Channels: Channel[];
@@ -50,7 +55,7 @@ export interface Frame {
 }
 export interface Recommendation {
   Id: string;
-  Role: 'CPU' | 'GPU' | 'Case' | 'Pump';
+  Role: FanRole;
   Source: string;
   SourceLabel: string;
   Eligible: boolean;
@@ -97,6 +102,7 @@ export function readTemperature(frame: Frame | undefined, group: 'CPU' | 'GPU'):
       s.Group === group &&
       s.Value !== null &&
       s.Value > 0 &&
+      s.Value <= 150 &&
       Number.isFinite(s.Value) &&
       dateValue(frame.Time) - dateValue(s.Time) <= 3000 &&
       dateValue(frame.Time) - dateValue(s.Time) >= -1000,
@@ -110,9 +116,57 @@ export function readTemperature(frame: Frame | undefined, group: 'CPU' | 'GPU'):
   );
   return values.length ? Math.max(...values) : null;
 }
+export function readSourceTemperature(frame: Frame, source: string): number | null {
+  if (source === 'group/cpu') return readTemperature(frame, 'CPU');
+  if (source === 'group/gpu') return readTemperature(frame, 'GPU');
+  if (source === 'group/mix') {
+    const cpu = readTemperature(frame, 'CPU'),
+      gpu = readTemperature(frame, 'GPU');
+    return cpu !== null && gpu !== null ? Math.max(cpu, gpu) : null;
+  }
+  const sensor = frame.Sensors.find((item) => item.Id === source && item.Kind === 'Temperature');
+  if (
+    !sensor ||
+    sensor.Value === null ||
+    sensor.Value <= 0 ||
+    sensor.Value > 150 ||
+    !Number.isFinite(sensor.Value) ||
+    dateValue(frame.Time) - dateValue(sensor.Time) > 3000 ||
+    dateValue(frame.Time) - dateValue(sensor.Time) < -1000
+  )
+    return null;
+  return sensor.Value;
+}
+export function evaluateProfile(profile: FanProfile, temperature: number): number {
+  if (profile.Mode === 1) return Math.max(profile.Minimum, profile.Manual);
+  const first = profile.Points[0],
+    last = profile.Points.at(-1);
+  if (!first || !last) return 100;
+  if (temperature <= first.Temperature) return Math.max(profile.Minimum, first.Duty);
+  for (let i = 1; i < profile.Points.length; i++) {
+    const point = profile.Points[i],
+      previous = profile.Points[i - 1];
+    if (point && previous && temperature <= point.Temperature)
+      return Math.max(
+        profile.Minimum,
+        previous.Duty +
+          ((point.Duty - previous.Duty) * (temperature - previous.Temperature)) /
+            (point.Temperature - previous.Temperature),
+      );
+  }
+  return Math.max(profile.Minimum, last.Duty);
+}
 export function profileFor(channel: Channel, snapshot: Snapshot): FanProfile {
-  const saved = snapshot.Profiles.find((p) => p.Id === channel.Id);
-  if (saved) return structuredClone(saved);
+  const saved =
+    channel.Owned && channel.ActiveProfile
+      ? channel.ActiveProfile
+      : snapshot.Profiles.find((p) => p.Id === channel.Id);
+  if (saved)
+    return {
+      ...structuredClone(saved),
+      RiseSeconds: saved.RiseSeconds ?? 0,
+      FallSeconds: saved.FallSeconds ?? 0,
+    };
   return {
     Id: channel.Id,
     Name: channel.Name,
@@ -127,11 +181,33 @@ export function profileFor(channel: Channel, snapshot: Snapshot): FanProfile {
   };
 }
 export function rpmFor(channel: Channel, snapshot: Snapshot): number | null {
-  const profile = snapshot.Profiles.find((p) => p.Id === channel.Id);
+  const profile =
+    channel.Owned && channel.ActiveProfile
+      ? channel.ActiveProfile
+      : snapshot.Profiles.find((p) => p.Id === channel.Id);
   const id = profile?.RpmId ?? channel.DefaultRpmId;
-  return snapshot.Snapshot.Sensors.find((s) => s.Id === id && s.Kind === 'Fan')?.Value ?? null;
+  const sensor = snapshot.Snapshot.Sensors.find((s) => s.Id === id && s.Kind === 'Fan');
+  if (
+    !sensor ||
+    dateValue(snapshot.Snapshot.Time) - dateValue(sensor.Time) > 3000 ||
+    dateValue(snapshot.Snapshot.Time) - dateValue(sensor.Time) < -1000
+  )
+    return null;
+  return sensor.Value;
 }
 export function validateProfile(profile: FanProfile): string | null {
+  if (profile.Role != null && !['CPU', 'GPU', 'Case', 'Pump', 'Unknown'].includes(profile.Role))
+    return '请选择有效的风扇用途';
+  if (
+    profile.RiseSeconds != null &&
+    (!Number.isFinite(profile.RiseSeconds) || profile.RiseSeconds < 0 || profile.RiseSeconds > 30)
+  )
+    return '请将升温平滑设为 0–30 秒';
+  if (
+    profile.FallSeconds != null &&
+    (!Number.isFinite(profile.FallSeconds) || profile.FallSeconds < 0 || profile.FallSeconds > 120)
+  )
+    return '请将降温平滑设为 0–120 秒';
   if (!Number.isFinite(profile.Minimum) || profile.Minimum < 20 || profile.Minimum > 100)
     return '请将最低输出设为 20–100%';
   if (![0, 1, 2].includes(profile.Mode)) return '控制方式无效，请重新选择';
@@ -160,7 +236,11 @@ export function validateProfile(profile: FanProfile): string | null {
 }
 
 export function channelName(channel: Channel, snapshot: Snapshot) {
-  return snapshot.Profiles.find((profile) => profile.Id === channel.Id)?.Name || channel.Name;
+  return (
+    (channel.Owned ? channel.ActiveProfile?.Name : undefined) ||
+    snapshot.Profiles.find((profile) => profile.Id === channel.Id)?.Name ||
+    channel.Name
+  );
 }
 
 export function gpuName(frame: Frame) {

@@ -12,7 +12,7 @@ pwsh -File ./scripts/build-installer.ps1
 
 `build.ps1` downloads the pinned LibreHardwareMonitor and WebView2 SDK packages into `.deps` and checks their SHA-256. It builds the frontend, compiles both C# executables with the Windows .NET Framework compiler and writes the app to `artifacts/app`.
 
-`test.ps1` checks control logic using simulated fan ports. With `-Desktop`, it also runs the WebView2 interface in demo mode and checks preset changes, restoration, per-fan exclusion and theme switching through the native worker. Both modes use simulated fans and do not access physical hardware. Desktop tests require WebView2 Runtime. Reports are saved in `artifacts/tests`.
+`test.ps1` checks control logic using simulated fan ports. With `-Desktop`, it also runs the WebView2 interface in demo mode and checks staged plan editing, exact parameter review, explicit application, restoration, exclusions and theme switching through the native worker. Both modes use simulated fans and do not access physical hardware. Desktop tests require WebView2 Runtime. Reports are saved in `artifacts/tests`.
 
 `package.ps1` writes a portable ZIP and its SHA-256 file to `dist`. The app downloads PawnIO's pinned installer from its official release when motherboard setup needs it; the installer is not included in the ZIP.
 

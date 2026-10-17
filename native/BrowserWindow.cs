@@ -148,7 +148,7 @@ namespace CinnaFanCon
                 else if(command.Action=="close")Close();
                 else if(command.Action=="drag")BeginWindowDrag();
                 else if(command.Action=="enableMotherboard")await EnableMotherboard(command.Id);
-                else if(command.Action=="smart"||command.Action=="release"||command.Action=="apply"||command.Action=="rescan")
+                else if(command.Action=="smart"||command.Action=="plan"||command.Action=="release"||command.Action=="apply"||command.Action=="rescan")
                 {
                     if(setupPending){Reply(command.Id,"正在设置主板访问，请等待安装和授权完成。",false);return;}
                     if(worker==null||!worker.Send(command))Reply(command.Id,"尚未连接风扇服务，请稍后再试。",false);
@@ -251,17 +251,41 @@ namespace CinnaFanCon
                     if(!demo)throw new InvalidOperationException("界面操作测试只能在演示模式运行。");
                     await VerifyWindowDragRouting();
                     await browser.CoreWebView2.ExecuteScriptAsync("if(document.querySelector('.app-layout').dataset.theme==='dark')document.querySelector('[aria-label=\"切换主题\"]').click()");await Task.Delay(600);
-                    await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=mode-均衡]').click()");
-                    await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=smart-start]').click()");
+                    await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=configure-plan]').click()");
+                    await WaitForUi("!!document.querySelector('[data-testid=review-plan]')","Plan editor did not load.");
+                    await browser.CoreWebView2.ExecuteScriptAsync("(()=>{const input=document.querySelector('[aria-label=\"方案最低输出\"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'42');input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));input.blur();})()");
+                    await Task.Delay(1400);
+                    if(worker.Latest.Snapshot.Channels.Any(c=>c.Owned))throw new Exception("Editing a plan acquired a fan before review.");
+                    string retained=await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[aria-label=\"方案最低输出\"]').value==='42'");
+                    if(retained!="true")throw new Exception("Telemetry overwrote the plan draft.");
+                    await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=review-plan]').click()");
+                    await WaitForUi("!!document.querySelector('[data-testid=apply-plan]')","Plan review did not load.");
+                    string review=await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=plan-review]').textContent.includes('最低输出 42%')&&document.querySelector('[data-testid=plan-review]').textContent.includes('demo/0')");
+                    if(review!="true" || worker.Latest.Snapshot.Channels.Any(c=>c.Owned))throw new Exception("Review did not show exact settings before application.");
+                    await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=apply-plan]').click()");
                     bool applied=false;
-                    for(int i=0;i<25;i++){await Task.Delay(200);if(worker.Latest!=null&&worker.Latest.Snapshot.Channels.All(c=>c.Owned)){applied=true;break;}}
-                    if(!applied)throw new Exception("Automatic control did not acquire all four simulated fan ports.");
-                    await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=mode-静音]').click()");
-                    bool changed=false;for(int i=0;i<25;i++){await Task.Delay(200);if(worker.Latest.Snapshot.CoolingMode=="静音"){changed=true;break;}}
-                    if(!changed)throw new Exception("Changing a mode did not reach the native smart planner.");
+                    for(int i=0;i<25;i++){await Task.Delay(200);if(worker.Latest.Snapshot.Channels.Count(c=>c.Owned)==3&&worker.Latest.Profiles.Any(p=>p.Id=="demo/0"&&p.Minimum==42)){applied=true;break;}}
+                    if(!applied || worker.Latest.Snapshot.Channels.First(c=>c.Id=="demo/3").Owned)throw new Exception("Reviewed plan did not reach the native worker or changed the GPU default.");
+                    if(worker.Latest.Snapshot.Channels.First(c=>c.Id=="demo/0").ActiveProfile.Minimum!=42)throw new Exception("Actual running parameters were not published.");
+                    var cpuPlan=worker.Latest.Snapshot.Channels.First(c=>c.Id=="demo/0").ActiveProfile;
+                    var casePlan=worker.Latest.Snapshot.Channels.First(c=>c.Id=="demo/1").ActiveProfile;
+                    if(cpuPlan.Role!="CPU" || cpuPlan.RiseSeconds!=3 || cpuPlan.FallSeconds!=20 || casePlan.Role!="Case" || casePlan.Source!="group/mix" || casePlan.Points[1].Temperature!=55 || casePlan.FallSeconds!=30)throw new Exception("Reviewed role curves or smoothing did not survive the native bridge.");
+                    await Task.Delay(400);
+                    await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=configure-plan]').click()");
+                    await WaitForUi("!!document.querySelector('[data-testid=review-plan]')","Plan editor did not reopen.");
+                    await browser.CoreWebView2.ExecuteScriptAsync("(()=>{const input=document.querySelector('[aria-label=\"方案最低输出\"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'48');input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));input.blur();})()");
+                    await Task.Delay(500);
+                    if(worker.Latest.Snapshot.Channels.First(c=>c.Id=="demo/0").ActiveProfile.Minimum!=42)throw new Exception("Editing an active plan modified hardware immediately.");
+                    await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=review-plan]').click()");
+                    await WaitForUi("!!document.querySelector('[data-testid=apply-plan]')","Second plan review did not load.");
+                    await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=apply-plan]').click()");
+                    bool changed=false;
+                    for(int i=0;i<25;i++){await Task.Delay(200);if(worker.Latest.Profiles.Any(p=>p.Id=="demo/0"&&p.Minimum==48)){changed=true;break;}}
+                    if(!changed)throw new Exception("The second reviewed plan was not applied.");
+                    await Task.Delay(400);
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=release-all]').click()");
                     bool released=false;for(int i=0;i<25;i++){await Task.Delay(200);if(worker.Latest.Snapshot.Channels.All(c=>!c.Owned)){released=true;break;}}
-                    if(!released)throw new Exception("Global release did not restore all fake ports.");
+                    if(!released)throw new Exception("Global release did not restore the simulated fan ports.");
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=advanced-menu]').click()");
                     await WaitForUi("!!document.querySelector('[data-testid=\"configure-demo/0\"]')","The fan settings page did not finish loading.");
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=\"configure-demo/0\"]').click()");
@@ -271,16 +295,22 @@ namespace CinnaFanCon
                     for(int i=0;i<20;i++){await Task.Delay(150);if(worker.Latest.Snapshot.Time>editedAt.AddSeconds(1.2))break;}
                     string draftRetained=await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[aria-label=\"风扇显示名称\"]').value==='CPU 演示草稿'");
                     if(draftRetained!="true")throw new Exception("Live telemetry overwrote the user's fan editor draft.");
-                    await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[aria-label=\"跟随主页模式\"]').click()");await Task.Delay(100);
+                    await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[aria-label=\"参与方案默认选择\"]').click()");await Task.Delay(100);
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=apply-channel]').click()");
                     bool excluded=false;
                     for(int i=0;i<25;i++){await Task.Delay(200);if(worker.Latest.Profiles.Any(p=>p.Id=="demo/0"&&p.Excluded==true)){excluded=true;break;}}
                     if(!excluded)throw new Exception("Advanced participation setting did not reach the native worker.");
                     await Task.Delay(400);await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=home-menu]').click()");await Task.Delay(200);
-                    await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=smart-start]').click()");
+                    await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=configure-plan]').click()");
+                    await WaitForUi("!!document.querySelector('[data-testid=review-plan]')","Excluded plan editor did not load.");
+                    string checkbox=await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=\"plan-include-demo/0\"]').checked===false");
+                    if(checkbox!="true")throw new Exception("Excluded fan was selected when reopening a plan.");
+                    await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=review-plan]').click()");
+                    await WaitForUi("!!document.querySelector('[data-testid=apply-plan]')","Excluded plan review did not load.");
+                    await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=apply-plan]').click()");
                     bool respected=false;
-                    for(int i=0;i<25;i++){await Task.Delay(200);if(worker.Latest.Snapshot.Channels.Count(c=>c.Owned)==3&&!worker.Latest.Snapshot.Channels.First(c=>c.Id=="demo/0").Owned){respected=true;break;}}
-                    if(!respected)throw new Exception("The preset was applied to an excluded fan.");
+                    for(int i=0;i<25;i++){await Task.Delay(200);if(worker.Latest.Snapshot.Channels.Count(c=>c.Owned)==2&&!worker.Latest.Snapshot.Channels.First(c=>c.Id=="demo/0").Owned){respected=true;break;}}
+                    if(!respected)throw new Exception("The reviewed plan was applied to an excluded fan.");
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=release-all]').click()");await Task.Delay(300);
                     string light=await browser.CoreWebView2.ExecuteScriptAsync("getComputedStyle(document.querySelector('.app-layout > .ant-layout')).backgroundColor");
                     string lightSidebar=await browser.CoreWebView2.ExecuteScriptAsync("getComputedStyle(document.querySelector('.app-sidebar')).backgroundColor");
@@ -295,8 +325,7 @@ namespace CinnaFanCon
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[aria-label=\"切换主题\"]').click()");await Task.Delay(600);
                     string restoredSidebar=await browser.CoreWebView2.ExecuteScriptAsync("getComputedStyle(document.querySelector('.app-sidebar')).backgroundColor");
                     if(restoredSidebar!=lightSidebar)throw new Exception("Switching back to the light theme did not restore the sidebar surface.");
-                    await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=mode-均衡]').click()");
-                    File.WriteAllText(smokeReport,"PASS: WebView2 UI communicates with the native worker\r\nPASS: sidebar padding, brand and header route window drags; controls and secondary input remain independent\r\nPASS: automatic control acquires four simulated fans and matches temperature sources\r\nPASS: switching to Quiet mode updates the native planner\r\nPASS: restoring prior settings releases all four simulated fan ports\r\nPASS: live telemetry preserves the fan editor draft\r\nPASS: the next preset skips a fan excluded in its settings\r\nPASS: switching themes updates the desktop surface, sidebar and navigation menu\r\nThis test uses simulated fans and does not access physical hardware.\r\n");
+                    File.WriteAllText(smokeReport,"PASS: WebView2 UI communicates with the native worker\r\nPASS: sidebar padding, brand and header route window drags; controls remain independent\r\nPASS: editing and reviewing plans never change simulated hardware\r\nPASS: exact reviewed minima, role curves and response timings reach the worker\r\nPASS: CPU and case fans are acquired; GPU stays under prior settings\r\nPASS: active settings change only after the second explicit application\r\nPASS: restoring settings releases simulated ports\r\nPASS: telemetry preserves plan and per-fan editor drafts\r\nPASS: excluded fans are not selected in a reopened plan\r\nPASS: both themes update the surface, sidebar and navigation\r\nThis test uses simulated fans and does not access physical hardware.\r\n");
                 }
                 await Task.Delay(smokeReport==null?400:2300);
                 using(var stream=File.Create(capturePath))await browser.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,stream);

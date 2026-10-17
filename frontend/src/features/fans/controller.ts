@@ -185,10 +185,19 @@ export function createFanController(
     },
     selectMode(mode: CoolingMode) {
       if (state.busy || state.connection.kind !== 'ready') return Promise.resolve(false);
-      if (state.snapshot?.Snapshot.Channels.some((channel) => channel.Owned))
-        return run({ Action: 'smart', Mode: mode });
       saveMode(mode);
       return Promise.resolve(true);
+    },
+    applyPlan(profiles: FanProfile[]) {
+      const prepared = structuredClone(profiles);
+      for (const profile of prepared) {
+        const error = validateProfile(profile);
+        if (error) {
+          report({ type: 'warning', message: error });
+          return Promise.resolve(false);
+        }
+      }
+      return run({ Action: 'plan', Profiles: prepared });
     },
     startSelectedMode: () => run({ Action: 'smart', Mode: state.selectedMode }),
     release: () => run({ Action: 'release' }),

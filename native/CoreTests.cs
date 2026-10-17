@@ -64,6 +64,20 @@ namespace CinnaFanCon
             profile.Mode=FanMode.Manual;profile.Manual=45;
             session.Apply(profile);session.Tick(Readings(t,95,54),t);Assert(port.Writes.Last()==100,"manual overheat protection");
             session.Release();passed.Add("Missing sensor and manual-mode thermal protection");
+            var smooth=new FanProfile {Id="fake",Role="CPU",Mode=FanMode.Curve,Source="group/cpu",Minimum=30,RiseSeconds=3,FallSeconds=20,
+                Points=new List<CurvePoint>{new CurvePoint(30,40),new CurvePoint(50,40),new CurvePoint(65,55),new CurvePoint(75,75),new CurvePoint(85,100)}};
+            port=new Port();session=new ControlSession(port);session.Apply(smooth);session.Tick(Readings(t,40,54),t);
+            session.Tick(Readings(t.AddSeconds(1),80,54),t.AddSeconds(1));double spike=port.Writes.Last();
+            Assert(spike<60,"a short normal temperature spike is smoothed");
+            session.Tick(Readings(t.AddSeconds(2),80,54),t.AddSeconds(2));Assert(port.Writes.Last()>spike,"sustained load still increases output");
+            session.Tick(Readings(t.AddSeconds(3),85,54),t.AddSeconds(3));Assert(port.Writes.Last()==100,"raw full-speed curve endpoint bypasses smoothing");
+            session.Tick(new List<SensorReading>(),t.AddSeconds(4));Assert(port.Writes.Last()==100,"missing readings bypass long response smoothing");
+            var view=session.View();Assert(view.ActiveProfile!=null && view.ActiveProfile.RiseSeconds==3,"actual running parameters are published independently of persistence");
+            view.ActiveProfile.Points[0].Duty=99;Assert(session.Profile.Points[0].Duty==40,"active profile snapshots do not mutate a running session");
+            session.Release();
+            invalid=smooth.Clone();invalid.RiseSeconds=Double.PositiveInfinity;Assert(invalid.Validate()!=null,"infinite smoothing rejected");
+            invalid=smooth.Clone();invalid.FallSeconds=-1;Assert(invalid.Validate()!=null,"negative smoothing rejected");
+            passed.Add("Quiet response smooths transients; full-speed endpoint and missing readings bypass smoothing; actual parameter snapshots are isolated");
             port=new Port { FailWrite=true };session=new ControlSession(port);session.Apply(profile);
             try { session.Tick(Readings(t,48,54),t);Assert(false,"write failure must throw"); } catch(InvalidOperationException) { }
             Assert(session.Owned,"partial write retains ownership for rollback");session.Release();Assert(port.Restores==1 && !session.Owned,"failed-write rollback");

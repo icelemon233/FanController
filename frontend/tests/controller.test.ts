@@ -3,6 +3,7 @@ import test from 'node:test';
 import { createDemoSnapshot } from '../src/features/fans/api/demoData.ts';
 import type { FanGateway } from '../src/features/fans/api/gateway.ts';
 import { createFanController, type Feedback } from '../src/features/fans/controller.ts';
+import { createPlanDraft, planProfiles } from '../src/features/fans/coolingPlan.ts';
 import { FakeGateway, FakeScheduler, memoryModePreference, reply } from './helpers.ts';
 
 async function connected() {
@@ -15,6 +16,25 @@ async function connected() {
   return { controller, gateway, scheduler, preference };
 }
 
+test('batch application freezes the reviewed values and rejects duplicate submissions', async () => {
+  const { controller, gateway } = await connected();
+  const profiles = planProfiles(createPlanDraft(createDemoSnapshot()));
+  const pending = controller.applyPlan(profiles);
+  const submitted = gateway.requests.at(-1);
+  assert.equal(submitted?.Action, 'plan');
+  const first = profiles[0];
+  assert.ok(first);
+  first.Minimum = 80;
+  if (submitted?.Action !== 'plan') throw new Error('Expected plan command');
+  assert.equal(submitted.Profiles[0]?.Minimum, 30);
+  assert.equal(submitted.Profiles[3]?.Mode, 0);
+  assert.equal(await controller.applyPlan(profiles), false);
+  gateway.complete(reply({ Success: false, Message: '一个通道已断开，请重新预览' }));
+  assert.equal(await pending, false);
+  assert.equal(controller.getSnapshot().busy, null);
+  controller.stop();
+});
+
 test('rapid repeated control actions submit only one native command', async () => {
   const { controller, gateway } = await connected();
   const first = controller.startSelectedMode();
@@ -26,17 +46,16 @@ test('rapid repeated control actions submit only one native command', async () =
   controller.stop();
 });
 
-test('failed mode changes keep the confirmed selection and saved preference', async () => {
+test('changing a draft choice never writes hardware, even while fans are controlled', async () => {
   const { controller, gateway, preference } = await connected();
   const frame = createDemoSnapshot();
   for (const channel of frame.Snapshot.Channels) channel.Owned = true;
   frame.Snapshot.CoolingMode = '均衡';
   gateway.publish(frame);
-  const pending = controller.selectMode('静音');
-  gateway.complete(reply({ Success: false, Message: '驱动拒绝此操作' }));
-  assert.equal(await pending, false);
-  assert.equal(controller.getSnapshot().selectedMode, '均衡');
-  assert.equal(preference.value, '均衡');
+  assert.equal(await controller.selectMode('静音'), true);
+  assert.equal(gateway.requests.length, 1);
+  assert.equal(controller.getSnapshot().selectedMode, '静音');
+  assert.equal(preference.value, '静音');
   controller.stop();
 });
 

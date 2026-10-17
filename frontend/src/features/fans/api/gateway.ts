@@ -4,6 +4,7 @@ export type FanCommand =
   | { Action: 'ready' }
   | { Action: 'release' | 'rescan' | 'enableMotherboard' }
   | { Action: 'smart'; Mode: CoolingMode }
+  | { Action: 'plan'; Profiles: FanProfile[] }
   | { Action: 'apply'; Profile: FanProfile };
 
 export type FanEvent =

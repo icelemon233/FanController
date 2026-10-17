@@ -211,6 +211,11 @@ namespace CinnaFanCon
             if(stopping) return;
             commands.Enqueue(new EngineCommand { Kind="smart",Mode=mode,Profiles=profiles.Select(p=>p.Clone()).ToList(),RequestId=requestId });wake.Set();
         }
+        public void EnqueuePlan(IEnumerable<FanProfile> profiles,string requestId)
+        {
+            if(stopping)return;
+            commands.Enqueue(new EngineCommand {Kind="plan",Mode="自定义",Profiles=profiles.Select(p=>p.Clone()).ToList(),RequestId=requestId});wake.Set();
+        }
 
         private void Notify(FanProfile p,string message,bool success,string requestId=null)
         {
@@ -270,13 +275,21 @@ namespace CinnaFanCon
                             foreach(var port in backend.Ports) sessions.Add(new ControlSession(port));
                             coolingMode=null;frame=backend.Poll(); Notify(null,"硬件检测完成。",true,command.RequestId);
                         }
-                        else if(command.Kind=="smart")
+                        else if(command.Kind=="smart" || command.Kind=="plan")
                         {
                             frame.Channels=sessions.Select(s=>s.View()).ToList();
                             var result=new SmartResult { Id=command.RequestId,Mode=command.Mode };
                             try
                             {
-                                var plan=CoolingPlanner.Create(frame,command.Mode,command.Profiles,DateTime.UtcNow);result.Skipped=plan.Skipped;
+                                CoolingPlan plan;
+                                if(command.Kind=="plan")
+                                {
+                                    string error=CoolingPlanner.ValidateExplicit(frame,command.Profiles,DateTime.UtcNow);
+                                    if(error!=null)throw new ArgumentException(error);
+                                    plan=new CoolingPlan {Profiles=command.Profiles};
+                                }
+                                else plan=CoolingPlanner.Create(frame,command.Mode,command.Profiles,DateTime.UtcNow);
+                                result.Skipped=plan.Skipped;
                                 foreach(var profile in plan.Profiles)
                                 {
                                     var session=sessions.First(s=>s.Port.Id==profile.Id);
@@ -295,6 +308,9 @@ namespace CinnaFanCon
                         }
                         else if(command.Kind=="apply")
                         {
+                            frame.Channels=sessions.Select(s=>s.View()).ToList();
+                            string invalid=CoolingPlanner.ValidateExplicit(frame,new[]{command.Profile},DateTime.UtcNow);
+                            if(invalid!=null){Notify(command.Profile,invalid,false,command.RequestId);continue;}
                             var session=sessions.FirstOrDefault(s=>s.Port.Id==command.Profile.Id);
                             if(session==null) { Notify(command.Profile,"未找到这组风扇，请重新检测。",false,command.RequestId); continue; }
                             try

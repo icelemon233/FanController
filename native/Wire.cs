@@ -27,6 +27,7 @@ namespace CinnaFanCon
     }
     public static class Wire
     {
+        public const int MaximumMessageLength=262144;
         public static string Encode(WireMessage message)
         {
             using(var memory=new MemoryStream())
@@ -36,7 +37,7 @@ namespace CinnaFanCon
         }
         public static WireMessage Decode(string json)
         {
-            if(json==null || json.Length>65536) throw new InvalidDataException("收到空消息或消息过长，无法处理。");
+            if(json==null || json.Length>MaximumMessageLength) throw new InvalidDataException("收到空消息或消息过长，无法处理。");
             using(var memory=new MemoryStream(Encoding.UTF8.GetBytes(json))) return (WireMessage)new DataContractJsonSerializer(typeof(WireMessage)).ReadObject(memory);
         }
     }

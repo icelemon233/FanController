@@ -41,7 +41,10 @@ export default function SetupDrawer({ open, onClose }: { open: boolean; onClose:
               content: '未安装 PawnIO 时，应用会下载官方安装器。请按安装器提示完成安装。',
             },
             { title: '授权主板访问', content: '确认 Windows 授权提示，允许风扇服务访问主板。' },
-            { title: '开启自动调节', content: '检测完成后，回到概览选择模式并开启自动调节。' },
+            {
+              title: '配置调节方案',
+              content: '检测完成后回到概览，确认风扇用途并预览参数，再点击“应用方案”。',
+            },
           ]}
         />
         <Alert

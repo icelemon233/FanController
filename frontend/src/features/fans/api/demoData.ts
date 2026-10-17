@@ -61,8 +61,8 @@ export function createDemoSnapshot(time = new Date().toISOString()): Snapshot {
           : index === 0
             ? 'CPU 最高温度'
             : 'CPU 与 GPU 的较高温度',
-      Eligible: true,
-      Reason: null,
+      Eligible: index !== 3,
+      Reason: index === 3 ? '建议保留显卡原设置，支持时可在低负载停转' : null,
     });
   });
   return frame;

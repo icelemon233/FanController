@@ -12,6 +12,7 @@ import {
   Typography,
 } from 'antd';
 import { lazy, Suspense, useRef, useState } from 'react';
+import { sourceLabel } from './coolingPlan.ts';
 import { useFanControl } from './FanControlProvider.tsx';
 import { type Channel, channelName, type FanProfile, gpuName, rpmFor } from './model.ts';
 
@@ -94,13 +95,17 @@ export default function FanDevices() {
               },
             },
             {
-              title: '主页模式温度来源',
+              title: '用途 / 温度来源',
               key: 'source',
               render: (_, c) => {
                 const r = snapshot.Recommendations.find((r) => r.Id === c.Id);
                 return (
                   <Text type="secondary">
-                    {r?.Eligible ? r.SourceLabel : (r?.Reason ?? '暂无匹配结果')}
+                    {c.Owned && c.ActiveProfile
+                      ? sourceLabel(c.ActiveProfile.Source, snapshot)
+                      : r?.Eligible
+                        ? r.SourceLabel
+                        : (r?.Reason ?? '请确认风扇用途')}
                   </Text>
                 );
               },

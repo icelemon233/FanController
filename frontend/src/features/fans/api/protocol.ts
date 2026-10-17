@@ -41,6 +41,7 @@ const channel = shape({
   Target: nullableNumber,
   Owned: flag,
   Error: optionalText,
+  ActiveProfile: (value) => value == null || profile(value),
 });
 const profile = shape({
   Id: text,
@@ -52,10 +53,14 @@ const profile = shape({
   Manual: number,
   Points: (value) => value === null || list(shape({ Temperature: number, Duty: number }))(value),
   Excluded: (value) => value == null || flag(value),
+  Role: (value) =>
+    value == null || ['CPU', 'GPU', 'Case', 'Pump', 'Unknown'].includes(String(value)),
+  RiseSeconds: (value) => value == null || number(value),
+  FallSeconds: (value) => value == null || number(value),
 });
 const recommendation = shape({
   Id: text,
-  Role: (value) => ['CPU', 'GPU', 'Case', 'Pump'].includes(String(value)),
+  Role: (value) => ['CPU', 'GPU', 'Case', 'Pump', 'Unknown'].includes(String(value)),
   Source: text,
   SourceLabel: text,
   Eligible: flag,
@@ -89,10 +94,22 @@ export function parseHostEvent(value: unknown): FanEvent | Reply | undefined {
     parsed.Snapshot.Board ??= null;
     parsed.Snapshot.Cpu ??= null;
     parsed.Snapshot.Gpu ??= null;
-    for (const saved of parsed.Profiles) {
+    for (const saved of [
+      ...parsed.Profiles,
+      ...parsed.Snapshot.Channels.flatMap((item) =>
+        item.ActiveProfile ? [item.ActiveProfile] : [],
+      ),
+    ]) {
       saved.Name ??= '';
       saved.Source ??= '';
       saved.Points ??= [];
+    }
+    for (const item of parsed.Snapshot.Channels) {
+      if (
+        item.ActiveProfile &&
+        (item.ActiveProfile.Id !== item.Id || item.ActiveProfile.Mode !== item.Mode)
+      )
+        throw new Error(protocolErrorMessage);
     }
     return parsed;
   }

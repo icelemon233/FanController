@@ -91,3 +91,34 @@ test('the wire boundary accepts .NET dates, isolates input and normalizes nullab
 test('desktop production never falls back to a browser demo when the bridge is missing', async () => {
   await assert.rejects(createGatewayFactory(undefined, false)(), /未检测到 Windows 原生桥接/);
 });
+
+test('actual running profiles cross the boundary and mismatched channels or nonfinite timings fail', () => {
+  const snapshot = createDemoSnapshot();
+  const channel = snapshot.Snapshot.Channels[0];
+  assert.ok(channel);
+  channel.Owned = true;
+  channel.Mode = 2;
+  channel.ActiveProfile = {
+    Id: channel.Id,
+    Name: 'CPU',
+    Role: 'CPU',
+    Mode: 2,
+    Source: 'group/cpu',
+    RpmId: null,
+    Minimum: 40,
+    Manual: 50,
+    RiseSeconds: 3,
+    FallSeconds: 20,
+    Points: [
+      { Temperature: 30, Duty: 40 },
+      { Temperature: 85, Duty: 100 },
+    ],
+  };
+  const parsed = parseHostEvent(snapshot);
+  assert.equal(parsed?.Type, 'snapshot');
+  channel.ActiveProfile.Id = 'another-channel';
+  assert.throws(() => parseHostEvent(snapshot));
+  channel.ActiveProfile.Id = channel.Id;
+  channel.ActiveProfile.FallSeconds = Number.NaN;
+  assert.throws(() => parseHostEvent(snapshot));
+});

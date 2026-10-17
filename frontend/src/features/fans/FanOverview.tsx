@@ -1,59 +1,35 @@
 import {
-  AudioMutedOutlined,
-  CheckCircleOutlined,
   ControlOutlined,
   DesktopOutlined,
   FundProjectionScreenOutlined,
-  PoweroffOutlined,
-  ReloadOutlined,
   SafetyCertificateOutlined,
-  ThunderboltOutlined,
 } from '@ant-design/icons';
-import { Button, Card, Flex, Space, Statistic, Tag, Typography, theme } from 'antd';
+import { Button, Card, Descriptions, Flex, Space, Statistic, Tag, Typography, theme } from 'antd';
+import { lazy, Suspense, useRef, useState } from 'react';
 import { FanIcon } from '../../components/FanIcon.tsx';
+import ActiveFanSettings from './ActiveFanSettings.tsx';
 import { useFanControl } from './FanControlProvider.tsx';
-import { type CoolingMode, gpuName, readTemperature, rpmFor, summarizeFans } from './model.ts';
+import { gpuName, readTemperature, rpmFor, summarizeFans } from './model.ts';
 import MiniTrend from './TemperatureTrend.tsx';
 
 const { Text, Title } = Typography;
-const modes = [
-  {
-    name: '静音' as const,
-    icon: <AudioMutedOutlined />,
-    description: '低温时保持较低输出',
-    detail: '办公、网页浏览',
-  },
-  {
-    name: '均衡' as const,
-    icon: <ControlOutlined />,
-    description: '温度升高时逐步提速',
-    detail: '日常使用',
-  },
-  {
-    name: '强冷' as const,
-    icon: <ThunderboltOutlined />,
-    description: '较早提高风扇输出',
-    detail: '游戏、持续高负载',
-  },
-];
+const CoolingPlanDrawer = lazy(() => import('./CoolingPlanDrawer.tsx'));
 
 export default function FanOverview({ onDevices }: { onDevices: () => void }) {
   const { token } = theme.useToken();
   const { state, controller } = useFanControl();
+  const [planSession, setPlanSession] = useState<number | null>(null);
+  const sequence = useRef(0);
   const snapshot = state.snapshot;
   if (!snapshot) return null;
   const frame = snapshot.Snapshot;
   const { active, eligible, needsSetup } = summarizeFans(snapshot);
   const busy = state.busy,
     stale = state.connection.kind !== 'ready';
-  const selectedMode = state.selectedMode,
-    history = state.history;
+  const history = state.history;
   const cooling = frame.CoolingMode,
     channels = frame.Channels,
     fallbackGpu = gpuName(frame);
-  const chooseMode = (mode: CoolingMode) => {
-    void controller.selectMode(mode);
-  };
   const stats = [
     {
       key: 'CPU',
@@ -133,7 +109,7 @@ export default function FanOverview({ onDevices }: { onDevices: () => void }) {
               {active
                 ? cooling === '自定义'
                   ? '使用自定义设置'
-                  : `${cooling ?? selectedMode}模式`
+                  : `${cooling ?? '已应用方案'}`
                 : `${eligible} 组可自动调节`}
             </Text>
             <Button type="text" size="small" onClick={() => onDevices()}>
@@ -144,17 +120,8 @@ export default function FanOverview({ onDevices }: { onDevices: () => void }) {
       </div>
       <Card className="cooling-card" styles={{ body: { padding: 24 } }}>
         <Flex className="cooling-heading" justify="space-between" align="center" gap={16}>
-          <div>
-            <Title level={4}>风扇模式</Title>
-            <Text type="secondary">
-              {active
-                ? cooling === '自定义'
-                  ? '选择主页模式会替换参与风扇的单组设置。'
-                  : '点击模式即可切换，风扇输出随温度变化。'
-                : '选择模式后，点击“开启自动调节”。'}
-            </Text>
-          </div>
-          <Space>
+          <Title level={4}>风扇调节</Title>
+          <Space wrap>
             {active > 0 && (
               <Button
                 data-testid="release-all"
@@ -166,53 +133,63 @@ export default function FanOverview({ onDevices }: { onDevices: () => void }) {
               </Button>
             )}
             <Button
-              data-testid="smart-start"
+              data-testid="configure-plan"
               type="primary"
-              size="large"
-              icon={active ? <ReloadOutlined /> : <PoweroffOutlined />}
-              loading={busy === 'smart'}
-              disabled={!frame || eligible === 0 || Boolean(busy) || stale}
-              onClick={() => controller.startSelectedMode()}
+              icon={<ControlOutlined />}
+              disabled={Boolean(busy) || stale || !channels.length}
+              onClick={() => setPlanSession(++sequence.current)}
             >
-              {active ? '应用所选模式' : '开启自动调节'}
+              配置与预览
             </Button>
           </Space>
         </Flex>
-        <div className="mode-grid">
-          {modes.map((mode) => (
-            <Button
-              key={mode.name}
-              data-testid={`mode-${mode.name}`}
-              className={`mode-option ${selectedMode === mode.name ? 'mode-selected' : ''}`}
-              disabled={Boolean(busy) || stale}
-              onClick={() => chooseMode(mode.name)}
-              aria-pressed={selectedMode === mode.name}
-            >
-              <div className="mode-option-content">
-                <Flex gap={10} align="center">
-                  <span className="mode-icon">{mode.icon}</span>
-                  <Text strong>{mode.name}</Text>
-                  {mode.name === '均衡' && <Text className="mode-default">默认</Text>}
-                </Flex>
-                <Text className="mode-description">{mode.description}</Text>
-                <Text type="secondary" className="mode-detail">
-                  {mode.detail}
-                </Text>
-              </div>
-              {selectedMode === mode.name && <CheckCircleOutlined className="selected-check" />}
-            </Button>
-          ))}
-        </div>
+        {active > 0 ? (
+          <ActiveFanSettings snapshot={snapshot} />
+        ) : (
+          <>
+            <Title level={5} style={{ margin: '24px 0 16px' }}>
+              日常安静起点
+            </Title>
+            <Descriptions
+              column={{ xs: 1, sm: 1, md: 2 }}
+              items={[
+                { key: 'cpu', label: 'CPU 风扇', children: '50°C 以内 40%，升温后逐步提速' },
+                { key: 'case', label: '机箱风扇', children: '55°C 以内 30%，减少频繁变速' },
+                { key: 'gpu', label: '显卡风扇', children: '保留原设置，支持时低负载停转' },
+                {
+                  key: 'unknown',
+                  label: '未确认通道 / 水泵',
+                  children: '保留原设置，确认用途后再配置',
+                },
+              ]}
+            />
+            <Text type="secondary">
+              曲线是可调整的起点，实际输出受各组最低值限制。先核对风扇和参数，再应用。
+            </Text>
+          </>
+        )}
         <Flex className="protection-note" justify="space-between" gap={16} wrap>
           <Space>
             <SafetyCertificateOutlined />
-            <Text type="secondary">已接管风扇遇到高温或必要温度缺失时，会设为最高输出。</Text>
+            <Text type="secondary">高温或必要温度失效时，已接管风扇立即设为最高输出。</Text>
           </Space>
           <Button type="link" size="small" onClick={() => onDevices()}>
-            设置单组风扇
+            查看单组设置
           </Button>
         </Flex>
       </Card>
+      {planSession !== null && (
+        <Suspense fallback={null}>
+          <CoolingPlanDrawer
+            key={planSession}
+            snapshot={snapshot}
+            busy={Boolean(busy)}
+            connected={!stale}
+            onApply={controller.applyPlan}
+            onClose={() => setPlanSession((current) => (current === planSession ? null : current))}
+          />
+        </Suspense>
+      )}
       <div className="section-heading">
         <Title level={5}>设备状态</Title>
       </div>

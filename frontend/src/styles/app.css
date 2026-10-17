@@ -259,80 +259,73 @@ button {
   height: 42px;
   font-size: 14px;
 }
-.mode-grid {
+.plan-workspace {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 24px;
+  grid-template-columns: minmax(250px, 0.8fr) minmax(0, 1.35fr);
+  gap: 24px;
+  align-items: start;
 }
-.mode-option.ant-btn {
-  height: auto;
-  min-height: 114px;
+.plan-channel-selected.ant-card {
+  border-color: var(--fd-primary);
+  background: var(--fd-primary-bg);
+}
+.plan-channel .ant-select {
   width: 100%;
-  padding: 17px 18px;
-  text-align: left;
-  display: block;
-  position: relative;
-  border: 0;
-  color: var(--fd-ink);
-  background: var(--fd-fill);
-  white-space: normal;
-  transition:
-    background-color 160ms ease,
-    transform 160ms ease;
 }
-.mode-option.ant-btn > span:not(.anticon) {
-  display: block;
+.plan-channel-note.ant-typography {
+  font-size: 12px;
+  line-height: 1.6;
 }
-.mode-option.ant-btn:not(:disabled):hover {
-  color: var(--fd-ink);
-  background: var(--fd-primary-bg);
-  transform: translateY(-1px);
-}
-.mode-option.mode-selected {
-  background: var(--fd-primary-bg);
-  color: var(--fd-primary);
-}
-.mode-option.mode-selected .ant-typography {
-  color: var(--fd-ink);
-}
-.mode-selected .mode-icon {
-  color: var(--fd-ink);
-}
-.mode-option-content {
+.plan-fields {
   display: flex;
-  flex-direction: column;
-  gap: 7px;
+  flex-wrap: wrap;
+  gap: 20px;
 }
-.mode-option-content > .ant-flex {
-  padding-right: 20px;
+.plan-fields .ant-form-item {
+  flex: 1 1 120px;
 }
-.mode-option-content strong {
-  font-size: 16px;
-  font-weight: 600;
+.plan-fields .ant-input-number {
+  width: 100%;
 }
-.mode-icon {
-  font-size: 18px;
-  color: var(--fd-muted);
+.curve-fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
 }
-.mode-default.ant-typography {
-  font-size: 13px;
-  color: var(--fd-muted);
+.curve-summary {
+  line-height: 1.9;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
-.mode-description.ant-typography {
-  font-size: 14px;
-  line-height: 1.4;
+.plan-review-row .ant-card-head-title {
+  white-space: normal;
 }
-.mode-detail.ant-typography {
-  font-size: 13px;
-  line-height: 1.4;
+.plan-drawer .ant-drawer-footer {
+  padding: 16px 24px;
 }
-.selected-check {
-  position: absolute;
-  right: 15px;
-  top: 20px;
-  color: var(--fd-primary);
-  font-size: 16px;
+.plan-parameters {
+  min-width: 0;
+}
+.tabular-number {
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 850px) {
+  .plan-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .plan-channel-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .plan-channel-list > .ant-flex:first-child {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 560px) {
+  .plan-channel-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .protection-note {
   padding-top: 18px;
@@ -486,9 +479,8 @@ button {
 .ant-drawer-body .ant-form-item-label > label {
   font-size: 14px;
 }
-.ant-btn:focus-visible,
-.mode-option.ant-btn:focus-visible {
-  outline: 2px solid var(--fd-primary, #5a9bfc);
+.ant-btn:focus-visible {
+  outline: 2px solid var(--fd-primary);
   outline-offset: 3px;
 }
 ::-webkit-scrollbar {
@@ -541,13 +533,6 @@ button {
   }
   .cooling-heading > .ant-space {
     margin-left: auto;
-  }
-  .mode-option.ant-btn {
-    padding: 16px 14px;
-  }
-  .mode-grid {
-    gap: 8px;
-    margin-top: 20px;
   }
   .device-row .ant-card-body {
     grid-template-columns: minmax(160px, 1.2fr) minmax(140px, 1fr) auto;
@@ -603,18 +588,6 @@ button {
     width: 100%;
     margin-left: 0;
     flex-wrap: wrap;
-  }
-  .mode-grid {
-    grid-template-columns: 1fr;
-  }
-  .mode-option.ant-btn {
-    min-height: 92px;
-  }
-  .mode-option-content {
-    gap: 6px;
-  }
-  .mode-detail.ant-typography {
-    display: none;
   }
   .device-row .ant-card-body {
     grid-template-columns: minmax(0, 1fr) auto;

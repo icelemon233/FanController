@@ -18,8 +18,9 @@ import {
 } from 'antd';
 import { useState } from 'react';
 import CurveEditor from './CurveEditor.tsx';
-import type { Channel, FanProfile, Snapshot } from './model.ts';
-import { preset, profileFor, readTemperature, validateProfile } from './model.ts';
+import { quietProfile, roleFor, roleLabels } from './coolingPlan.ts';
+import type { Channel, FanProfile, FanRole, Snapshot } from './model.ts';
+import { profileFor, readTemperature, validateProfile } from './model.ts';
 
 export default function FanSettingsDrawer({
   channel,
@@ -36,13 +37,22 @@ export default function FanSettingsDrawer({
   onClose: () => void;
   onApply: (profile: FanProfile) => Promise<boolean>;
 }) {
-  const [draft, setDraft] = useState<FanProfile>(() => profileFor(channel, snapshot));
+  const [draft, setDraft] = useState<FanProfile>(() => ({
+    ...(snapshot.Profiles.some((item) => item.Id === channel.Id)
+      ? profileFor(channel, snapshot)
+      : quietProfile(channel, snapshot)),
+    Role: roleFor(channel, snapshot),
+  }));
   const [manualSource, setManualSource] = useState(
     () => draft.Source !== snapshot.Recommendations.find((item) => item.Id === channel.Id)?.Source,
   );
   const recommendation = snapshot.Recommendations.find((r) => r.Id === channel.Id);
+  const role = draft.Role ?? 'Unknown';
+  const automaticSource = quietProfile(channel, snapshot, role).Source;
   const unavailable =
-    recommendation?.Role === 'Pump' ||
+    role === 'Unknown' ||
+    role === 'Pump' ||
+    /pump|水泵/i.test(channel.Name) ||
     Boolean(channel.Error) ||
     readTemperature(snapshot.Snapshot, channel.Group === 'GPU' ? 'GPU' : 'CPU') === null;
   const patch = (value: Partial<FanProfile>) => setDraft((p) => ({ ...p, ...value }));
@@ -50,7 +60,7 @@ export default function FanSettingsDrawer({
   const disabled = draft.Mode !== 0 && !draft.Excluded && unavailable;
   const apply = async () => {
     const value = structuredClone(draft);
-    if (!manualSource && recommendation) value.Source = recommendation.Source;
+    if (!manualSource) value.Source = automaticSource;
     if (value.Excluded) value.Mode = 0;
     await onApply(value);
   };
@@ -112,6 +122,25 @@ export default function FanSettingsDrawer({
               onChange={(e) => patch({ Name: e.target.value })}
             />
           </Form.Item>
+          <Form.Item label="风扇用途">
+            <Select
+              aria-label="风扇用途"
+              value={role}
+              disabled={channel.Group === 'GPU' || /pump|水泵/i.test(channel.Name)}
+              options={(channel.Group === 'GPU'
+                ? ['GPU']
+                : /pump|水泵/i.test(channel.Name)
+                  ? ['Pump']
+                  : (['Unknown', 'CPU', 'Case', 'Pump'] as const)
+              ).map((value) => ({ value, label: roleLabels[value as FanRole] }))}
+              onChange={(Role: FanRole) =>
+                patch({ Role, Source: quietProfile(channel, snapshot, Role).Source })
+              }
+            />
+            <Typography.Paragraph type="secondary" style={{ margin: '8px 0 0' }}>
+              按实际接线确认用途。Fan # 只是通道名称，可能未接风扇或连接水泵。
+            </Typography.Paragraph>
+          </Form.Item>
           <Form.Item label="控制方式">
             <Radio.Group
               value={draft.Mode}
@@ -119,8 +148,8 @@ export default function FanSettingsDrawer({
               optionType="button"
               buttonStyle="solid"
               options={[
-                { label: '随温度调节', value: 2, disabled: recommendation?.Role === 'Pump' },
-                { label: '固定输出', value: 1, disabled: recommendation?.Role === 'Pump' },
+                { label: '随温度调节', value: 2, disabled: role === 'Pump' || role === 'Unknown' },
+                { label: '固定输出', value: 1, disabled: role === 'Pump' || role === 'Unknown' },
                 { label: '恢复原设置', value: 0 },
               ]}
             />
@@ -133,18 +162,29 @@ export default function FanSettingsDrawer({
                 title={
                   manualSource
                     ? '使用自选温度来源'
-                    : (recommendation?.SourceLabel ?? '自动匹配温度来源')
+                    : automaticSource === 'group/mix'
+                      ? 'CPU / GPU 较高温度'
+                      : automaticSource === 'group/gpu'
+                        ? 'GPU 温度（优先核心）'
+                        : 'CPU 最高温度'
                 }
                 description={manualSource ? '可在“曲线与更多设置”中更换温度来源。' : undefined}
               />
-              <Form.Item label="曲线预设" style={{ marginTop: 20 }}>
-                <Space wrap>
-                  {(['静音', '均衡', '强冷'] as const).map((mode) => (
-                    <Button key={mode} onClick={() => patch({ Points: preset(mode) })}>
-                      {mode}
-                    </Button>
-                  ))}
-                </Space>
+              <Form.Item label="曲线起点" style={{ marginTop: 20 }}>
+                <Button
+                  disabled={role === 'Unknown' || role === 'Pump'}
+                  onClick={() =>
+                    patch({
+                      ...quietProfile(channel, snapshot, role),
+                      Name: draft.Name,
+                      Minimum: draft.Minimum,
+                      RpmId: draft.RpmId,
+                      Excluded: draft.Excluded,
+                    })
+                  }
+                >
+                  使用安静起点
+                </Button>
               </Form.Item>
             </>
           )}
@@ -175,21 +215,22 @@ export default function FanSettingsDrawer({
               description="cinna-fanCon 将停止调节这组风扇。"
             />
           )}
-          <Form.Item label="跟随主页模式" style={{ marginTop: 24 }}>
+          <Form.Item label="参与方案默认选择" style={{ marginTop: 24 }}>
             <Space>
               <Switch
-                aria-label="跟随主页模式"
+                aria-label="参与方案默认选择"
                 checked={!draft.Excluded}
-                disabled={recommendation?.Role === 'Pump'}
+                disabled={role === 'Pump' || role === 'Unknown'}
                 onChange={(checked) => patch({ Excluded: !checked })}
               />
               <Typography.Text type="secondary">
-                关闭并应用后恢复原设置，切换主页模式时会跳过这组风扇。
+                关闭并应用后恢复原设置，下次配置方案时默认不勾选这组风扇。
               </Typography.Text>
             </Space>
           </Form.Item>
         </Form>
         <Collapse
+          defaultActiveKey={['details']}
           items={[
             {
               key: 'details',
@@ -240,10 +281,34 @@ export default function FanSettingsDrawer({
                         }}
                       />
                       <Typography.Paragraph type="secondary" style={{ margin: '8px 0 0' }}>
-                        请使用已确认风扇能稳定运转的最低值。主页模式的最低输出为
-                        30%，已保存的更高值会保留。
+                        请使用已确认风扇能稳定运转的最低值。百分比不能直接换算成
+                        RPM，实际转速以读数为准。
                       </Typography.Paragraph>
                     </Form.Item>
+                    {draft.Mode === 2 && (
+                      <Flex gap={20} wrap>
+                        <Form.Item label="升温平滑">
+                          <InputNumber
+                            aria-label="单组升温平滑"
+                            min={0}
+                            max={30}
+                            suffix="秒"
+                            value={draft.RiseSeconds ?? 0}
+                            onChange={(RiseSeconds) => patch({ RiseSeconds })}
+                          />
+                        </Form.Item>
+                        <Form.Item label="降温平滑">
+                          <InputNumber
+                            aria-label="单组降温平滑"
+                            min={0}
+                            max={120}
+                            suffix="秒"
+                            value={draft.FallSeconds ?? 0}
+                            onChange={(FallSeconds) => patch({ FallSeconds })}
+                          />
+                        </Form.Item>
+                      </Flex>
+                    )}
                     <Form.Item label="转速传感器">
                       <Select
                         value={draft.RpmId ?? ''}

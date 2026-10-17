@@ -1,5 +1,13 @@
 # Interface design
 
+## Control plans — v0.4.0
+
+The overview replaces the three immediate presets with an editable quiet-first plan. CPU, case, GPU, pump and unidentified roles have distinct defaults. The plan editor places channel selection beside the selected fan’s source, minimum output, smoothing and curve; names and RPM sensor mapping stay in an optional details panel. A separate review lists every channel and exact applied parameters, including restorations. The live overview shows actual running profiles, output and measured RPM.
+
+Both themes and 900-pixel width were inspected with simulated hardware. The native WebView2 smoke test verifies that editing and reviewing perform no fan writes, then checks exact application, restoration and exclusion. These checks do not measure real noise or physical fan behaviour. See [configuration notes](./fan-configuration.md) for research and parameter choices.
+
+以下记录保留旧版本的设计过程；v0.4.0 已用可编辑、需预览后应用的调节方案替换三档即时模式。
+
 ## Tray context menu — v0.3.4
 
 The tray's right-click menu keeps the native Windows menu control and the existing open, restore and exit commands. Its renderer uses 36-DIP rows, 14-DIP text, monochrome line icons, inset rounded selection and a separator before exit. Windows 11 supplies the outer rounded frame and shadow through DWM; Windows 10 uses a simple border. The palette follows the Windows app theme on each opening and uses system colours in high contrast. Pixel-sized fonts and native window DPI keep the menu's text and geometry on the same scale. Both palettes, keyboard selection, Enter, Escape and outside-click dismissal were inspected in an isolated preview using the production menu class; the preview callbacks only wrote test logs.

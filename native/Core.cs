@@ -29,6 +29,9 @@ namespace CinnaFanCon
         [DataMember] public double Manual = 50;
         [DataMember] public double Minimum = 30;
         [DataMember(EmitDefaultValue=false)] public bool? Excluded;
+        [DataMember(EmitDefaultValue=false)] public string Role;
+        [DataMember(EmitDefaultValue=false)] public double? RiseSeconds;
+        [DataMember(EmitDefaultValue=false)] public double? FallSeconds;
         [DataMember] public List<CurvePoint> Points = Preset("均衡");
 
         public static List<CurvePoint> Preset(string name)
@@ -41,12 +44,16 @@ namespace CinnaFanCon
         public FanProfile Clone()
         {
             return new FanProfile { Id = Id, Name = Name, Mode = Mode, Source = Source, RpmId = RpmId,
-                Manual = Manual, Minimum = Minimum, Excluded = Excluded, Points = Points == null ? null : Points.Select(p => new CurvePoint(p.Temperature,p.Duty)).ToList() };
+                Manual = Manual, Minimum = Minimum, Excluded = Excluded, Role = Role, RiseSeconds = RiseSeconds, FallSeconds = FallSeconds,
+                Points = Points == null ? null : Points.Select(p => new CurvePoint(p.Temperature,p.Duty)).ToList() };
         }
 
         public string Validate()
         {
             if (String.IsNullOrWhiteSpace(Id)) return "请先选择一组风扇。";
+            if (Role != null && Role != "CPU" && Role != "GPU" && Role != "Case" && Role != "Pump" && Role != "Unknown") return "风扇用途无效，请重新选择。";
+            if (RiseSeconds.HasValue && (!Numbers.Finite(RiseSeconds.Value) || RiseSeconds < 0 || RiseSeconds > 30)) return "请将升温平滑设为 0–30 秒。";
+            if (FallSeconds.HasValue && (!Numbers.Finite(FallSeconds.Value) || FallSeconds < 0 || FallSeconds > 120)) return "请将降温平滑设为 0–120 秒。";
             if (!Numbers.Finite(Minimum) || Minimum < 20 || Minimum > 100) return "请将最低输出设为 20–100%。";
             if (!Numbers.Finite(Manual) || Manual < 0 || Manual > 100) return "请将固定输出设为 0–100%。";
             if (Mode != FanMode.Hardware && Mode != FanMode.Manual && Mode != FanMode.Curve) return "控制方式无效，请重新选择。";
@@ -158,6 +165,7 @@ namespace CinnaFanCon
         [DataMember] public double? Target;
         [DataMember] public bool Owned;
         [DataMember] public string Error;
+        [DataMember(EmitDefaultValue=false)] public FanProfile ActiveProfile;
     }
 
     public sealed class ControlSession
@@ -170,6 +178,7 @@ namespace CinnaFanCon
         public string Error;
         private double? heldTemperature;
         private DateTime lastWrite = DateTime.MinValue;
+        private DateTime lastSample = DateTime.MinValue;
 
         public ControlSession(IControlPort port) { Port=port; }
 
@@ -179,7 +188,7 @@ namespace CinnaFanCon
             if(error!=null) throw new ArgumentException(error);
             if(profile.Id!=Port.Id) throw new ArgumentException("设置与风扇不匹配，请重新打开这组风扇的设置。");
             if(profile.Mode==FanMode.Hardware) { Release(); return; }
-            Profile=profile.Clone(); heldTemperature=null; LastTarget=null; Error=null;
+            Profile=profile.Clone(); heldTemperature=null; lastSample=DateTime.MinValue; LastTarget=null; Error=null;
         }
 
         public void Tick(IList<SensorReading> readings, DateTime now)
@@ -187,18 +196,28 @@ namespace CinnaFanCon
             if(Profile==null || Profile.Mode==FanMode.Hardware) return;
             double? safety=TemperatureSources.Resolve(Port.Group=="GPU"?"group/gpu":"group/cpu",readings,now);
             double? source=TemperatureSources.Resolve(Profile.Source,readings,now);
-            bool overheat=TemperatureSources.Overheat(readings,now);
+            var lastPoint=Profile.Mode==FanMode.Curve?Profile.Points[Profile.Points.Count-1]:null;
+            bool overheat=TemperatureSources.Overheat(readings,now) ||
+                (lastPoint!=null && lastPoint.Duty>=100 && source.HasValue && source.Value>=lastPoint.Temperature);
             bool missing=!safety.HasValue || (Profile.Mode==FanMode.Curve && !source.HasValue);
             bool emergency=overheat || missing;
             double target;
-            if(emergency) { target=Port.Maximum; Status=overheat ? "高温保护 · 最高输出" : "温度不可用 · 最高输出保护"; }
+            if(emergency) { heldTemperature=source; target=Port.Maximum; Status=overheat ? "高温保护 · 最高输出" : "温度不可用 · 最高输出保护"; }
             else if(Profile.Mode==FanMode.Manual) { target=Profile.Manual; Status="固定输出"; }
             else
             {
                 double t=source.Value;
-                if(!heldTemperature.HasValue || t>=heldTemperature.Value || heldTemperature.Value-t>=3) heldTemperature=t;
+                if(!heldTemperature.HasValue) heldTemperature=t;
+                else if(Profile.RiseSeconds.HasValue || Profile.FallSeconds.HasValue)
+                {
+                    double seconds=(t>=heldTemperature.Value?Profile.RiseSeconds:Profile.FallSeconds).GetValueOrDefault();
+                    double elapsed=lastSample==DateTime.MinValue?1:Numbers.Clamp((now-lastSample).TotalSeconds,0,3);
+                    heldTemperature=seconds<=0?t:heldTemperature.Value+(t-heldTemperature.Value)*(1-Math.Exp(-elapsed/seconds));
+                }
+                else if(t>=heldTemperature.Value || heldTemperature.Value-t>=3) heldTemperature=t;
                 target=Profile.Evaluate(heldTemperature.Value); Status="随温度调节";
             }
+            lastSample=now;
             target=Numbers.Clamp(Math.Max(Profile.Minimum,target),Port.Minimum,Port.Maximum);
             bool descending=!emergency && LastTarget.HasValue && target<LastTarget.Value;
             if(descending)
@@ -226,7 +245,7 @@ namespace CinnaFanCon
         public ChannelView View()
         {
             return new ChannelView { Id=Port.Id,Name=Port.Name,Device=Port.Device,Group=Port.Group,DefaultRpmId=Port.DefaultRpmId,
-                Status=Status,Mode=Profile==null?FanMode.Hardware:Profile.Mode,Target=LastTarget,Owned=Owned,Error=Error };
+                Status=Status,Mode=Profile==null?FanMode.Hardware:Profile.Mode,Target=LastTarget,Owned=Owned,Error=Error,ActiveProfile=Profile==null?null:Profile.Clone() };
         }
     }
 

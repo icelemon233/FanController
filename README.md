@@ -4,9 +4,9 @@
 
 <p align="center">English · <a href="./README.zh-CN.md">简体中文</a></p>
 
-A Windows application that adjusts supported CPU, case and GPU fans by temperature. Choose a preset or configure individual fan groups with a temperature curve or fixed output.
+A Windows application that adjusts supported CPU, case and GPU fans by temperature. Build a quiet-first control plan, review each fan’s settings, then apply it. Temperature curves and fixed output remain editable per fan group.
 
-[Download the Windows installer](https://github.com/icelemon233/cinna-fanCon/releases/download/v0.3.5/cinna-fanCon-v0.3.5-windows-x64-setup.exe) · [Portable ZIP](https://github.com/icelemon233/cinna-fanCon/releases/tag/v0.3.5) · [Build from source](./docs/build.md)
+[Download the Windows installer](https://github.com/icelemon233/cinna-fanCon/releases/download/v0.4.0/cinna-fanCon-v0.4.0-windows-x64-setup.exe) · [Portable ZIP](https://github.com/icelemon233/cinna-fanCon/releases/tag/v0.4.0) · [Build from source](./docs/build.md)
 
 <img src="./docs/images/overview.png" alt="cinna-fanCon overview in demo mode with simulated temperature and fan readings" width="960" />
 
@@ -15,20 +15,16 @@ A Windows application that adjusts supported CPU, case and GPU fans by temperatu
 ## Use the app
 
 1. Run the Windows installer, then open **cinna-fanCon** from the Start menu. A desktop shortcut is optional.
-2. Select **静音** (Quiet), **均衡** (Balanced) or **强冷** (Cooling), then click **开启自动调节** (Start automatic control).
-3. Click a preset to switch while control is active. Choose **恢复原设置** (Restore prior settings) to stop controlling the fans.
+2. Open **配置与预览** (Configure and preview). Confirm CPU and case fan roles against the actual wiring. Unidentified channels and pumps stay under their prior settings; GPU fans default to driver control.
+3. Edit each selected fan’s source, minimum output, curve and response smoothing. Click **预览应用内容** (Review changes) to see every channel and exact parameter, then **应用方案** (Apply plan).
 
-The app does not take control on startup. Presets choose a temperature source for each fan group:
+Editing and reviewing do not change hardware. The app does not acquire fans on startup. Unselected fans that were already controlled are restored when the plan is applied. The overview lists the fans actually under control, measured RPM, current output and applied parameters; expand a row for its full curve.
 
-| Fan group | Temperature source |
-| --- | --- |
-| CPU | Highest valid CPU reading |
-| GPU | GPU core temperature, or another valid GPU reading if the core reading is unavailable |
-| Case | Higher CPU/GPU temperature when both are available; otherwise CPU temperature |
+The editable quiet starting curves hold CPU fans at 40% through 50°C and case fans at 30% through 55°C, then rise to 100% at 85°C. Saved minimum outputs and custom settings are retained. CPU and case fans use different smoothing times to reduce brief speed changes. GPU driver control preserves idle fan-stop behaviour where supported.
 
-Fans with missing required readings or control errors, excluded fans and identified pumps are skipped when applying a preset.
+Output percentages are control values, not RPM targets. There is no automatic RPM calibration. See [configuration and research notes (Chinese)](./docs/fan-configuration.md) for the exact curves, response times, protection rules and initial RPM guidance. Individual settings remain available under **风扇设置** (Fan settings).
 
-Open **风扇设置** (Fan settings) to edit a group's curve, fixed output, minimum output or RPM sensor. Output percentages are control values, not measured RPM. Presets use a minimum output of 30% and preserve any higher value already saved. To leave a group under its prior settings, turn off **跟随主页模式** (Follow overview presets) and apply the change.
+<img src="./docs/images/plan.png" alt="Per-fan control-plan editor using simulated hardware" width="960" />
 
 Minimizing keeps the app running in the tray. The theme button switches between light and dark appearances. New installations start with the dark theme; an existing preference is preserved.
 

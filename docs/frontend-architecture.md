@@ -15,9 +15,9 @@ App assembly can depend on features and platform adapters. Features must not imp
 
 ## State and lifecycle
 
-The fan controller owns one latest native snapshot, the connection phase, pending operation, selected mode and the last 60 temperature samples. React subscribes with `useSyncExternalStore`; counts and filtered views are derived from the snapshot. There is no second copy of server profiles in a global UI store.
+The fan controller owns one latest native snapshot, the connection phase, pending operation, legacy mode preference and the last 60 temperature samples. React subscribes with `useSyncExternalStore`; counts and filtered views are derived from the snapshot. There is no second copy of server profiles in a global UI store.
 
-Each editor session owns its draft. Live readings update the view without reinitializing the draft. Successful replies close only the editor session that submitted them. Failed saves leave the draft open. Concurrent fan commands are rejected before the first asynchronous wait, so rapid clicks cannot create duplicate writes.
+Each editor session owns its draft. Control plans have separate edit and review stages; the reviewed profiles are frozen before submission. `coolingPlan.ts` owns role defaults, quiet starting curves, inclusion and preview validation. The native worker validates the entire explicit batch before its first write and applies those profiles without regenerating a preset. `ActiveProfile` reports the actual running parameters separately from persisted profiles, including when saving fails. Live readings update the view without reinitializing the draft. Successful replies close only the editor session that submitted them. Failed saves leave the draft open. Concurrent fan commands are rejected before the first asynchronous wait, so rapid clicks cannot create duplicate writes.
 
 Native requests have a session-specific identity and bounded wait. Disposal removes the listener, clears timers and rejects pending waits. Reconnection ignores late initialization and replies from previous sessions. This cancels frontend waits; it does not cancel an operation already received by the worker. Hardware restoration remains the native process's responsibility.
 

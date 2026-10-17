@@ -1,5 +1,14 @@
 import { type Scheduler, systemScheduler } from '../../../platform/scheduler.ts';
-import { type FanProfile, isCoolingMode, preset, type Reply, validateProfile } from '../model.ts';
+import { planError } from '../coolingPlan.ts';
+import {
+  evaluateProfile,
+  type FanProfile,
+  isCoolingMode,
+  preset,
+  type Reply,
+  readSourceTemperature,
+  validateProfile,
+} from '../model.ts';
 import { createDemoSnapshot } from './demoData.ts';
 import type { FanCommand, FanEvent, FanGateway } from './gateway.ts';
 
@@ -28,17 +37,25 @@ export function createDemoGateway(scheduler: Scheduler = systemScheduler): FanGa
     channel.Mode = profile.Excluded ? 0 : profile.Mode;
     channel.Owned = channel.Mode !== 0;
     channel.Target = channel.Owned
-      ? Math.max(profile.Minimum, profile.Mode === 1 ? profile.Manual : 55)
+      ? Math.round(
+          evaluateProfile(profile, readSourceTemperature(demo.Snapshot, profile.Source) ?? 90),
+        )
       : null;
     channel.Status = channel.Owned ? (channel.Mode === 1 ? '固定输出' : '随温度调节') : '未接管';
+    channel.ActiveProfile = channel.Owned ? structuredClone(profile) : null;
     demo.Profiles = [
       ...demo.Profiles.filter((item) => item.Id !== profile.Id),
       structuredClone({ ...profile, Mode: channel.Mode }),
     ];
     const recommendation = demo.Recommendations.find((item) => item.Id === profile.Id);
     if (recommendation) {
-      recommendation.Eligible = !profile.Excluded;
-      recommendation.Reason = profile.Excluded ? '已关闭“跟随主页模式”' : null;
+      recommendation.Role = profile.Role ?? recommendation.Role;
+      recommendation.Eligible = !profile.Excluded && ['CPU', 'Case'].includes(recommendation.Role);
+      recommendation.Reason = profile.Excluded
+        ? '已排除出调节方案'
+        : recommendation.Role === 'GPU'
+          ? '建议保留显卡原设置'
+          : null;
     }
   };
   const execute = (command: FanCommand): Reply => {
@@ -78,10 +95,39 @@ export function createDemoGateway(scheduler: Scheduler = systemScheduler): FanGa
         reply.Applied = count;
         break;
       }
+      case 'plan': {
+        if (command.Profiles.some((profile) => profile.Mode !== 0 && profile.Excluded))
+          throw new Error('已排除的风扇不能接管，请重新预览方案。');
+        if (
+          !command.Profiles.length ||
+          command.Profiles.length > 64 ||
+          new Set(command.Profiles.map((profile) => profile.Id)).size !== command.Profiles.length
+        )
+          throw new Error('方案中没有风扇或通道重复，请重新配置。');
+        const error = planError(
+          command.Profiles.map((profile) => ({ profile, included: profile.Mode !== 0 })),
+          demo,
+        );
+        if (error) throw new Error(error);
+        for (const profile of command.Profiles) apply(profile);
+        demo.Snapshot.CoolingMode = demo.Snapshot.Channels.some((channel) => channel.Owned)
+          ? '自定义'
+          : null;
+        const controlled = command.Profiles.filter((profile) => profile.Mode !== 0).length;
+        reply.Message = `已调节 ${controlled} 组风扇，${command.Profiles.length - controlled} 组使用原设置`;
+        reply.Applied = command.Profiles.length;
+        break;
+      }
       case 'release':
       case 'rescan':
         for (const channel of demo.Snapshot.Channels)
-          Object.assign(channel, { Owned: false, Target: null, Mode: 0, Status: '未接管' });
+          Object.assign(channel, {
+            Owned: false,
+            Target: null,
+            Mode: 0,
+            Status: '未接管',
+            ActiveProfile: null,
+          });
         demo.Snapshot.CoolingMode = null;
         reply.Message = command.Action === 'release' ? '已恢复风扇原设置' : '演示设备检测完成';
         break;
