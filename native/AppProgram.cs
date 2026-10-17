@@ -9,8 +9,8 @@ using System.Windows;
 
 [assembly:AssemblyTitle("cinna-fanCon")]
 [assembly:AssemblyDescription("Control supported CPU, case and GPU fans on Windows")]
-[assembly:AssemblyVersion("0.3.1.0")]
-[assembly:AssemblyFileVersion("0.3.1.0")]
+[assembly:AssemblyVersion("0.3.2.0")]
+[assembly:AssemblyFileVersion("0.3.2.0")]
 
 namespace CinnaFanCon
 {

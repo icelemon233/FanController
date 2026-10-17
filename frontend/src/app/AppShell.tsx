@@ -65,7 +65,7 @@ export default function AppShell({
         breakpoint="lg"
         collapsedWidth={72}
         trigger={null}
-        theme="dark"
+        theme={mode}
       >
         <div className="brand">
           <div className="brand-icon">
@@ -81,7 +81,7 @@ export default function AppShell({
           </div>
         </div>
         <Menu
-          theme="dark"
+          theme={mode}
           selectedKeys={[page]}
           onClick={({ key }) => {
             if (key === 'home' || key === 'devices') setPage(key);

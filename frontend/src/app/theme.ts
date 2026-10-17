@@ -1,15 +1,6 @@
 import { type ThemeConfig, theme } from 'antd';
 import type { ThemeMode } from './runtime.ts';
 
-const navigation = {
-  ground: '#0a0d14',
-  ink: '#e9edf3',
-  muted: '#a6afbf',
-  accent: '#5a9bfc',
-  selected: '#1e304c',
-  selectedInk: '#d9e7ff',
-  hover: '#151d2a',
-};
 const fontFamily = '"Segoe UI", "Microsoft YaHei UI", sans-serif';
 
 export function createAppTheme(mode: ThemeMode) {
@@ -33,6 +24,15 @@ export function createAppTheme(mode: ThemeMode) {
         muted: '#586577',
         border: '#dce2eb',
       };
+  const navigation = {
+    ground: dark ? palette.ground : palette.surface,
+    ink: palette.ink,
+    muted: palette.muted,
+    accent: palette.accent,
+    selected: dark ? '#1e304c' : '#eaf2ff',
+    selectedInk: dark ? '#d9e7ff' : palette.accent,
+    hover: dark ? '#151d2a' : '#f2f5fa',
+  };
   const config: ThemeConfig = {
     algorithm: dark ? theme.darkAlgorithm : theme.defaultAlgorithm,
     cssVar: { key: 'cinna-fancon' },
@@ -66,11 +66,18 @@ export function createAppTheme(mode: ThemeMode) {
         itemHeight: 46,
         itemMarginBlock: 8,
         itemBorderRadius: 8,
+        itemBg: 'transparent',
+        itemColor: navigation.muted,
+        itemSelectedBg: navigation.selected,
+        itemSelectedColor: navigation.selectedInk,
+        itemHoverBg: navigation.hover,
+        itemHoverColor: navigation.ink,
         darkItemBg: 'transparent',
         darkItemColor: navigation.muted,
         darkItemSelectedBg: navigation.selected,
         darkItemSelectedColor: navigation.selectedInk,
         darkItemHoverBg: navigation.hover,
+        darkItemHoverColor: navigation.ink,
       },
       Statistic: { contentFontSize: 52 },
       Table: { cellPaddingBlock: 18 },

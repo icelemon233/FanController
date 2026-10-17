@@ -188,6 +188,15 @@ namespace CinnaFanCon
             }
             finally{setupPending=false;}
         }
+        private async Task WaitForUi(string condition,string failure)
+        {
+            for(int i=0;i<50;i++)
+            {
+                if(await browser.CoreWebView2.ExecuteScriptAsync(condition)=="true")return;
+                await Task.Delay(100);
+            }
+            throw new Exception(failure);
+        }
         private async Task CaptureAndTest()
         {
             try
@@ -196,7 +205,7 @@ namespace CinnaFanCon
                 if(smokeReport!=null)
                 {
                     if(!demo)throw new InvalidOperationException("界面操作测试只能在演示模式运行。");
-                    await browser.CoreWebView2.ExecuteScriptAsync("if(document.querySelector('.app-layout').dataset.theme==='dark')document.querySelector('[aria-label=\"切换主题\"]').click()");await Task.Delay(250);
+                    await browser.CoreWebView2.ExecuteScriptAsync("if(document.querySelector('.app-layout').dataset.theme==='dark')document.querySelector('[aria-label=\"切换主题\"]').click()");await Task.Delay(600);
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=mode-均衡]').click()");
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=smart-start]').click()");
                     bool applied=false;
@@ -208,8 +217,10 @@ namespace CinnaFanCon
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=release-all]').click()");
                     bool released=false;for(int i=0;i<25;i++){await Task.Delay(200);if(worker.Latest.Snapshot.Channels.All(c=>!c.Owned)){released=true;break;}}
                     if(!released)throw new Exception("Global release did not restore all fake ports.");
-                    await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=advanced-menu]').click()");await Task.Delay(200);
-                    await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=\"configure-demo/0\"]').click()");await Task.Delay(700);
+                    await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=advanced-menu]').click()");
+                    await WaitForUi("!!document.querySelector('[data-testid=\"configure-demo/0\"]')","The fan settings page did not finish loading.");
+                    await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=\"configure-demo/0\"]').click()");
+                    await WaitForUi("!!document.querySelector('[aria-label=\"风扇显示名称\"]')","The fan editor did not finish loading.");
                     await browser.CoreWebView2.ExecuteScriptAsync("(()=>{const input=document.querySelector('[aria-label=\"风扇显示名称\"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'CPU 演示草稿');input.dispatchEvent(new Event('input',{bubbles:true}));})()");
                     DateTime editedAt=worker.Latest.Snapshot.Time;
                     for(int i=0;i<20;i++){await Task.Delay(150);if(worker.Latest.Snapshot.Time>editedAt.AddSeconds(1.2))break;}
@@ -227,12 +238,20 @@ namespace CinnaFanCon
                     if(!respected)throw new Exception("The preset was applied to an excluded fan.");
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=release-all]').click()");await Task.Delay(300);
                     string light=await browser.CoreWebView2.ExecuteScriptAsync("getComputedStyle(document.querySelector('.app-layout > .ant-layout')).backgroundColor");
-                    await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[aria-label=\"切换主题\"]').click()");await Task.Delay(300);
+                    string lightSidebar=await browser.CoreWebView2.ExecuteScriptAsync("getComputedStyle(document.querySelector('.app-sidebar')).backgroundColor");
+                    string lightMenu=await browser.CoreWebView2.ExecuteScriptAsync("!!document.querySelector('.app-sidebar.ant-layout-sider-light .ant-menu-light')");
+                    if(lightMenu!="true")throw new Exception("Light theme did not reach the sidebar and navigation menu.");
+                    await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[aria-label=\"切换主题\"]').click()");await Task.Delay(600);
                     string dark=await browser.CoreWebView2.ExecuteScriptAsync("getComputedStyle(document.querySelector('.app-layout > .ant-layout')).backgroundColor");
                     if(dark==light)throw new Exception("Switching to the dark theme did not change the desktop surface.");
-                    await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[aria-label=\"切换主题\"]').click()");
+                    string darkSidebar=await browser.CoreWebView2.ExecuteScriptAsync("getComputedStyle(document.querySelector('.app-sidebar')).backgroundColor");
+                    string darkMenu=await browser.CoreWebView2.ExecuteScriptAsync("!!document.querySelector('.app-sidebar.ant-layout-sider-dark .ant-menu-dark')");
+                    if(darkSidebar==lightSidebar||darkMenu!="true")throw new Exception("Switching to the dark theme did not update the sidebar and navigation menu.");
+                    await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[aria-label=\"切换主题\"]').click()");await Task.Delay(600);
+                    string restoredSidebar=await browser.CoreWebView2.ExecuteScriptAsync("getComputedStyle(document.querySelector('.app-sidebar')).backgroundColor");
+                    if(restoredSidebar!=lightSidebar)throw new Exception("Switching back to the light theme did not restore the sidebar surface.");
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=mode-均衡]').click()");
-                    File.WriteAllText(smokeReport,"PASS: WebView2 UI communicates with the native worker\r\nPASS: automatic control acquires four simulated fans and matches temperature sources\r\nPASS: switching to Quiet mode updates the native planner\r\nPASS: restoring prior settings releases all four simulated fan ports\r\nPASS: live telemetry preserves the fan editor draft\r\nPASS: the next preset skips a fan excluded in its settings\r\nPASS: switching themes updates the desktop surface\r\nThis test uses simulated fans and does not access physical hardware.\r\n");
+                    File.WriteAllText(smokeReport,"PASS: WebView2 UI communicates with the native worker\r\nPASS: automatic control acquires four simulated fans and matches temperature sources\r\nPASS: switching to Quiet mode updates the native planner\r\nPASS: restoring prior settings releases all four simulated fan ports\r\nPASS: live telemetry preserves the fan editor draft\r\nPASS: the next preset skips a fan excluded in its settings\r\nPASS: switching themes updates the desktop surface, sidebar and navigation menu\r\nThis test uses simulated fans and does not access physical hardware.\r\n");
                 }
                 await Task.Delay(smokeReport==null?400:2300);
                 using(var stream=File.Create(capturePath))await browser.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,stream);

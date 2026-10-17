@@ -72,14 +72,14 @@ button {
   color: var(--fd-nav-muted);
 }
 .sidebar-bottom .local-label .anticon {
-  color: #87b7ff;
+  color: var(--fd-nav-accent);
 }
 .sidebar-bottom .ant-btn {
-  color: #d0d8e4;
+  color: var(--fd-nav-muted);
   padding-inline: 0;
 }
 .sidebar-bottom .ant-btn:hover {
-  color: var(--fd-on-close) !important;
+  color: var(--fd-nav-ink) !important;
   background: transparent !important;
 }
 .ant-layout-sider-collapsed .brand {
