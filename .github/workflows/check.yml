@@ -54,4 +54,6 @@ jobs:
           foreach ($scenario in @('Ready','Refuse','WrongPath','Silent','Idle')) {
             ./scripts/test-installer-update.ps1 -Scenario $scenario
           }
+          ./scripts/test-installer-update.ps1 -Scenario Ready -Tray
+          ./scripts/test-installer-update.ps1 -Scenario Ready -Legacy
         shell: pwsh

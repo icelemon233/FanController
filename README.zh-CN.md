@@ -6,7 +6,7 @@
 
 根据温度调节受支持的 CPU、机箱和显卡风扇的 Windows 应用。以日常安静为起点，逐组配置、核对参数后应用，也可以单独设置曲线或固定输出。
 
-[下载 Windows 安装程序](https://github.com/icelemon233/FanController/releases/download/v0.4.3/FanController-v0.4.3-windows-x64-setup.exe) · [便携 ZIP](https://github.com/icelemon233/FanController/releases/tag/v0.4.3) · [从源码构建](./docs/build.md)
+[下载 Windows 安装程序](https://github.com/icelemon233/FanController/releases/download/v0.4.4/FanController-v0.4.4-windows-x64-setup.exe) · [便携 ZIP](https://github.com/icelemon233/FanController/releases/tag/v0.4.4) · [从源码构建](./docs/build.md)
 
 <img src="./docs/images/overview.png" alt="FanController 散热概览，使用模拟温度和风扇读数" width="960" />
 
@@ -26,7 +26,7 @@
 
 <img src="./docs/images/plan.png" alt="逐组编辑调节方案，使用模拟硬件" width="960" />
 
-最小化后，应用继续在托盘运行。点击主题按钮可切换深浅色界面。首次使用默认为深色，已有主题偏好会保留。
+关闭或最小化窗口后，应用继续在托盘调节风扇。双击托盘图标可重新打开窗口，右键选择“恢复原设置并退出”可结束运行。点击主题按钮可切换深浅色界面。首次使用默认为深色，已有主题偏好会保留。
 
 安装程序为当前用户安装应用，并添加 Windows“已安装的应用”记录。更新时确认关闭提示后，安装程序会请求旧版正常退出，等待风扇恢复和服务结束后继续安装。退出失败时会停止，程序文件不会被修改。静默安装和卸载仍需先退出应用。卸载会删除安装的程序文件和快捷方式，保留已保存的风扇配置。安装包目前尚未代码签名。
 

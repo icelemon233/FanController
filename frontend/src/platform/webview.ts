@@ -4,7 +4,7 @@ export interface WebViewPort {
   removeEventListener(type: 'message', listener: (event: { data: unknown }) => void): void;
 }
 
-export type WindowAction = 'minimize' | 'maximize' | 'close' | 'drag';
+export type WindowAction = 'minimize' | 'maximize' | 'close' | 'exit' | 'drag';
 
 export function getWebViewPort(): WebViewPort | undefined {
   const chrome: unknown = Reflect.get(window, 'chrome');

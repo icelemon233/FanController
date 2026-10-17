@@ -1,4 +1,4 @@
-param([ValidateSet('Ready','Refuse','WrongPath','Silent','Idle')][string]$Scenario='Ready',[switch]$Legacy)
+param([ValidateSet('Ready','Refuse','WrongPath','Silent','Idle')][string]$Scenario='Ready',[switch]$Legacy,[switch]$Tray)
 $ErrorActionPreference='Stop'
 $fanRoot=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $fanId=[Guid]::NewGuid().ToString('N')
@@ -20,7 +20,9 @@ $fanApp=$null
 try {
   if($Scenario -ne 'Idle'){
     $fanMode=if($Scenario -eq 'Refuse'){'Refuse'}else{'Ready'}
-    $fanApp=Start-Process -FilePath $fanMock -ArgumentList @($fanMode,$fanMutex,('"'+$fanRunningTitle+'"')) -WindowStyle Hidden -PassThru
+    $fanProtocol=if($Legacy){'LegacyClose'}else{'TrayClose'}
+    $fanWindowMode=if($Tray){'Hidden'}else{'Window'}
+    $fanApp=Start-Process -FilePath $fanMock -ArgumentList @($fanMode,$fanMutex,('"'+$fanRunningTitle+'"'),$fanProtocol,$fanWindowMode) -WindowStyle Hidden -PassThru
     $fanDeadline=[DateTime]::UtcNow.AddSeconds(10)
     while(-not (Test-Path -LiteralPath (Join-Path $fanFixture 'app-ready.txt')) -or -not (Test-Path -LiteralPath (Join-Path $fanFixture 'worker-ready.txt'))){
       if([DateTime]::UtcNow -gt $fanDeadline){throw 'Fake app or worker did not initialize.'}
@@ -33,20 +35,21 @@ try {
   Write-Output ('Fixture: '+$fanFixture)
   if(-not $fanSetup.WaitForExit(15000)){throw 'The test installer did not complete within fifteen seconds.'}
   $fanReady=Test-Path -LiteralPath (Join-Path $fanFixture 'ready.txt')
+  $fanExitEvent=if($Legacy){'close-requested'}else{'exit-requested'}
   $fanEvents=if(Test-Path -LiteralPath (Join-Path $fanFixture 'events.txt')){@(Get-Content -LiteralPath (Join-Path $fanFixture 'events.txt'))}else{@()}
   if($Scenario -in @('Ready','Idle')){
     if($fanSetup.ExitCode -ne 0 -or -not $fanReady){throw 'Setup did not continue after safe shutdown.'}
-    if($Scenario -eq 'Ready' -and (($fanEvents -join ',') -ne 'close-requested,worker-restored,host-exit' -or -not $fanApp.HasExited)){throw 'Setup continued before both the fake app and worker exited.'}
+    if($Scenario -eq 'Ready' -and (($fanEvents -join ',') -ne ($fanExitEvent+',worker-restored,host-exit') -or -not $fanApp.HasExited)){throw 'Setup continued before both the fake app and worker exited.'}
   }else{
     if($fanSetup.ExitCode -ne 10 -or $fanReady){throw 'Setup continued after cancellation or an unsafe shutdown.'}
     if($fanApp.HasExited){throw 'The test app was forcefully stopped.'}
-    if($Scenario -eq 'Refuse' -and ($fanEvents -join ',') -ne 'close-requested'){throw 'The refusal scenario did not request normal shutdown.'}
+    if($Scenario -eq 'Refuse' -and ($fanEvents -join ',') -ne $fanExitEvent){throw 'The refusal scenario did not request normal shutdown.'}
     if($Scenario -ne 'Refuse' -and $fanEvents.Count -ne 0){throw 'Setup closed an app in silent mode or from another installation.'}
   }
-  $fanResult='PASS: '+$Scenario+'; isolated update guard preserved shutdown ordering and program files'
+  $fanResult='PASS: '+$Scenario+'; '+$(if($Legacy){'legacy close'}else{'explicit tray exit'})+'; '+$(if($Tray){'hidden window'}else{'normal window'})+'; isolated update guard preserved shutdown ordering and program files'
   $fanReports=Join-Path $fanRoot 'artifacts\tests'
   New-Item -ItemType Directory -Force -Path $fanReports | Out-Null
-  $fanResult | Set-Content -LiteralPath (Join-Path $fanReports ('installer-update-'+$Scenario+$(if($Legacy){'-legacy'}else{''})+'.txt')) -Encoding utf8
+  $fanResult | Set-Content -LiteralPath (Join-Path $fanReports ('installer-update-'+$Scenario+$(if($Legacy){'-legacy'}else{''})+$(if($Tray){'-tray'}else{''})+'.txt')) -Encoding utf8
   Write-Output $fanResult
 }finally{
   [IO.File]::WriteAllText((Join-Path $fanFixture 'cleanup.txt'),'cleanup')

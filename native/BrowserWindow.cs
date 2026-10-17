@@ -24,15 +24,19 @@ namespace CinnaFanCon
         [DllImport("user32.dll")]private static extern IntPtr SendMessage(IntPtr handle,int message,IntPtr wParam,IntPtr lParam);
         [DllImport("user32.dll")]private static extern short GetAsyncKeyState(int key);
         [DllImport("user32.dll")]private static extern bool GetCursorPos(out ScreenPoint point);
+        [DllImport("user32.dll",CharSet=CharSet.Unicode)]private static extern int RegisterWindowMessage(string name);
         [StructLayout(LayoutKind.Sequential)]private struct ScreenPoint {public int X,Y;}
         private const string Origin="https://cinna-fancon.example";
+        private static readonly int RequestExitMessage=RegisterWindowMessage("CinnaFanCon.RequestExit");
         private readonly WebView2 browser=new WebView2();
         private readonly bool demo;
         private readonly string capturePath,smokeReport;
         private WorkerClient worker;
         private Forms.NotifyIcon tray;
         private System.Drawing.Icon trayIcon;
-        private bool ready,closing,stopPending,captureStarted,setupPending;
+        private HwndSource windowSource;
+        private WindowState restoredState=WindowState.Normal;
+        private bool ready,closing,exitRequested,stopPending,captureStarted,setupPending,verifyTrayExit;
         private bool rememberMotherboard;
         private static string MotherboardPreference {get{return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"cinna-fanCon","motherboard-access.enabled");}}
         public int TestExitCode;
@@ -53,19 +57,25 @@ namespace CinnaFanCon
             var border=new System.Windows.Controls.Border {Padding=new Thickness(1),Background=new SolidColorBrush(Color.FromRgb(34,44,61)),Child=browser};Content=border;
             browser.DefaultBackgroundColor=System.Drawing.Color.FromArgb(10,13,20);
             Loaded+=async delegate{await Initialize();};
+            SourceInitialized+=delegate
+            {
+                windowSource=HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
+                windowSource.AddHook(OnWindowMessage);
+            };
             Closing+=OnClosing;
-            if(capturePath==null)
+            Closed+=delegate{if(verifyTrayExit)File.AppendAllText(smokeReport,"PASS: tray exit closes the host after the simulated worker stops\r\n");};
+            if(capturePath==null||smokeReport!=null)
             {
                 using(var iconStream=OpenAppIcon())trayIcon=new System.Drawing.Icon(iconStream,Forms.SystemInformation.SmallIconSize);
                 tray=new Forms.NotifyIcon {Icon=trayIcon,Text="FanController · 风扇控制",Visible=true};
                 var menu=new TrayContextMenu(
                     ()=>Dispatcher.BeginInvoke(new Action(Restore)),
                     ()=>{if(worker!=null)worker.Send(new WireMessage {Type="command",Id="tray-release",Action="release"});},
-                    ()=>Dispatcher.BeginInvoke(new Action(()=>Close())));
+                    ()=>Dispatcher.BeginInvoke(new Action(RequestExit)));
                 tray.ContextMenuStrip=menu;tray.DoubleClick+=delegate{Dispatcher.BeginInvoke(new Action(Restore));};
-                StateChanged+=delegate{if(WindowState==WindowState.Minimized)Hide();};
+                StateChanged+=delegate{if(WindowState==WindowState.Minimized)Hide();else restoredState=WindowState;};
             }
-            else{ShowInTaskbar=false;WindowStartupLocation=WindowStartupLocation.Manual;Left=-30000;Top=-30000;}
+            if(capturePath!=null){ShowInTaskbar=false;WindowStartupLocation=WindowStartupLocation.Manual;Left=-30000;Top=-30000;}
         }
         private static Stream OpenAppIcon()
         {
@@ -73,7 +83,21 @@ namespace CinnaFanCon
             if(stream==null)throw new InvalidOperationException("应用图标缺失，请重新安装。");
             return stream;
         }
-        private void Restore(){Show();WindowState=WindowState.Normal;Activate();}
+        private void Restore(){if(closing)return;Show();WindowState=restoredState;Activate();}
+        private void MinimizeToTray()
+        {
+            if(WindowState!=WindowState.Minimized)restoredState=WindowState;
+            WindowState=WindowState.Minimized;Hide();
+        }
+        private void RequestExit(){exitRequested=true;Close();}
+        private IntPtr OnWindowMessage(IntPtr handle,int message,IntPtr wParam,IntPtr lParam,ref bool handled)
+        {
+            if(RequestExitMessage!=0&&message==RequestExitMessage)
+            {
+                handled=true;Dispatcher.BeginInvoke(new Action(RequestExit));return new IntPtr(1);
+            }
+            return IntPtr.Zero;
+        }
         private void BeginWindowDrag()
         {
             int primaryButton=Forms.SystemInformation.MouseButtonsSwapped?0x02:0x01;
@@ -116,7 +140,7 @@ namespace CinnaFanCon
             catch(Exception e)
             {
                 if(capturePath!=null){FailCapture(e);return;}
-                MessageBox.Show(this,"界面启动失败："+e.Message+"\n\n请确认已安装 Microsoft Edge WebView2 Runtime，并完整解压了应用文件。","FanController",MessageBoxButton.OK,MessageBoxImage.Error);Close();
+                MessageBox.Show(this,"界面启动失败："+e.Message+"\n\n请确认已安装 Microsoft Edge WebView2 Runtime，并完整解压了应用文件。","FanController",MessageBoxButton.OK,MessageBoxImage.Error);RequestExit();
             }
         }
         private static bool Trusted(string address)
@@ -160,6 +184,7 @@ namespace CinnaFanCon
                 else if(command.Action=="minimize")WindowState=WindowState.Minimized;
                 else if(command.Action=="maximize")WindowState=WindowState==WindowState.Maximized?WindowState.Normal:WindowState.Maximized;
                 else if(command.Action=="close")Close();
+                else if(command.Action=="exit")RequestExit();
                 else if(command.Action=="drag")BeginWindowDrag();
                 else if(command.Action=="enableMotherboard")await EnableMotherboard(command.Id);
                 else if(command.Action=="smart"||command.Action=="plan"||command.Action=="release"||command.Action=="apply"||command.Action=="rescan")
@@ -236,9 +261,9 @@ namespace CinnaFanCon
                     }
                     actions.length=0;down(padding,2);down(padding,1);down(padding,0,false);
                     check(actions.length===0,'Secondary or non-primary pointer input started a drag.');
-                    for(const target of [control('切换主题'),control('最小化'),control('最大化或还原'),control('关闭应用'),control('使用帮助'),document.querySelector('[data-testid=advanced-menu]')])down(target.querySelector('svg path')||target);
+                    for(const target of [control('切换主题'),control('最小化'),control('最大化或还原'),control('关闭窗口并最小化到托盘'),control('使用帮助'),document.querySelector('[data-testid=advanced-menu]')])down(target.querySelector('svg path')||target);
                     check(actions.length===0,'An interactive control started a window drag.');
-                    for(const [label,action] of [['最小化','minimize'],['最大化或还原','maximize'],['关闭应用','close']]){
+                    for(const [label,action] of [['最小化','minimize'],['最大化或还原','maximize'],['关闭窗口并最小化到托盘','close']]){
                         control(label).click();check(actions.pop()===action,'A window control lost its click action.');
                     }
                     return true;
@@ -254,6 +279,27 @@ namespace CinnaFanCon
                 await Task.Delay(100);
             }
             throw new Exception(failure);
+        }
+        private async Task VerifyTrayLifecycle()
+        {
+            if(!demo||smokeReport==null||tray==null)throw new InvalidOperationException("托盘测试只能在演示模式运行。");
+            var owned=worker.Latest.Snapshot.Channels.Where(c=>c.Owned).Select(c=>c.Id).OrderBy(id=>id).ToArray();
+            if(owned.Length==0)throw new Exception("Tray lifecycle test requires active simulated fan control.");
+            DateTime before=worker.Latest.Snapshot.Time;
+            await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[aria-label=\"关闭窗口并最小化到托盘\"]').click()");
+            await Task.Delay(1400);
+            if(IsVisible||closing||exitRequested||stopPending||!tray.Visible)throw new Exception("Closing the window did not leave the app in the tray.");
+            if(worker.Latest.Snapshot.Time<=before||!owned.SequenceEqual(worker.Latest.Snapshot.Channels.Where(c=>c.Owned).Select(c=>c.Id).OrderBy(id=>id)))throw new Exception("Closing the window interrupted simulated fan control or telemetry.");
+            tray.ContextMenuStrip.Items["tray-open"].PerformClick();await Task.Delay(150);
+            if(!IsVisible||WindowState!=WindowState.Normal)throw new Exception("The tray could not restore the closed window.");
+            // Alt+F4 and the taskbar's Close command also reach WPF Closing.
+            SendMessage(new WindowInteropHelper(this).Handle,0x0010,IntPtr.Zero,IntPtr.Zero);
+            if(IsVisible||closing||stopPending)throw new Exception("Native window close exited instead of hiding to the tray.");
+            tray.ContextMenuStrip.Items["tray-open"].PerformClick();await Task.Delay(150);
+            await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[aria-label=\"最小化\"]').click()");await Task.Delay(150);
+            if(IsVisible||closing||stopPending)throw new Exception("Minimizing no longer hides the window to the tray.");
+            tray.ContextMenuStrip.Items["tray-open"].PerformClick();await Task.Delay(150);
+            if(!IsVisible)throw new Exception("The tray could not restore the minimized window.");
         }
         private async Task CaptureAndTest()
         {
@@ -284,6 +330,7 @@ namespace CinnaFanCon
                     var cpuPlan=worker.Latest.Snapshot.Channels.First(c=>c.Id=="demo/0").ActiveProfile;
                     var casePlan=worker.Latest.Snapshot.Channels.First(c=>c.Id=="demo/1").ActiveProfile;
                     if(cpuPlan.Role!="CPU" || cpuPlan.RiseSeconds!=3 || cpuPlan.FallSeconds!=20 || casePlan.Role!="Case" || casePlan.Source!="group/mix" || casePlan.Points[1].Temperature!=55 || casePlan.FallSeconds!=30)throw new Exception("Reviewed role curves or smoothing did not survive the native bridge.");
+                    await VerifyTrayLifecycle();
                     await Task.Delay(400);
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=configure-plan]').click()");
                     await WaitForUi("!!document.querySelector('[data-testid=review-plan]')","Plan editor did not reopen.");
@@ -343,23 +390,35 @@ namespace CinnaFanCon
                 }
                 await Task.Delay(smokeReport==null?400:2300);
                 using(var stream=File.Create(capturePath))await browser.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,stream);
-                Close();
+                if(smokeReport!=null)
+                {
+                    File.AppendAllText(smokeReport,"PASS: close and minimize keep simulated fan control running; native close and tray reopen work\r\n");
+                    verifyTrayExit=true;tray.ContextMenuStrip.Items["tray-exit"].PerformClick();
+                }
+                else RequestExit();
             }
             catch(Exception e){FailCapture(e);}
         }
-        private void FailCapture(Exception error){TestExitCode=1;File.WriteAllText(capturePath+".error.txt",error.ToString());Close();}
+        private void FailCapture(Exception error){TestExitCode=1;File.WriteAllText(capturePath+".error.txt",error.ToString());RequestExit();}
         private async void OnClosing(object sender,System.ComponentModel.CancelEventArgs e)
         {
-            if(closing)return;e.Cancel=true;if(stopPending)return;stopPending=true;
+            if(closing)return;e.Cancel=true;
+            if(!exitRequested&&tray!=null){MinimizeToTray();return;}
+            if(stopPending)return;
+            if(setupPending)
+            {
+                exitRequested=false;Restore();Post(new WireMessage {Type="notice",Message="主板访问设置尚未完成，请完成安装或取消授权后再退出。",Success=false});return;
+            }
+            stopPending=true;
             try
             {
                 if(worker!=null&&!await worker.StopAsync())
                 {
-                    Post(new WireMessage {Type="notice",Message="尚未完成风扇恢复，应用将继续运行。请稍后重试退出。",Success=false});stopPending=false;return;
+                    exitRequested=false;stopPending=false;Restore();Post(new WireMessage {Type="notice",Message="尚未完成风扇恢复，应用将继续运行。请稍后重试退出。",Success=false});return;
                 }
-                closing=true;if(worker!=null)worker.Dispose();if(tray!=null){var menu=tray.ContextMenuStrip;tray.Visible=false;tray.Dispose();if(menu!=null)menu.Dispose();}if(trayIcon!=null)trayIcon.Dispose();browser.Dispose();Close();
+                closing=true;if(worker!=null)worker.Dispose();if(tray!=null){var menu=tray.ContextMenuStrip;tray.Visible=false;tray.Dispose();if(menu!=null)menu.Dispose();}if(trayIcon!=null)trayIcon.Dispose();if(windowSource!=null)windowSource.RemoveHook(OnWindowMessage);browser.Dispose();await Dispatcher.InvokeAsync(Close);
             }
-            catch(Exception error){stopPending=false;Post(new WireMessage {Type="notice",Message=error.Message,Success=false});}
+            catch(Exception error){exitRequested=false;stopPending=false;Restore();Post(new WireMessage {Type="notice",Message=error.Message,Success=false});}
         }
     }
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -9,6 +10,21 @@ using System.Windows.Forms;
 // the real installation, its mutexes, registry entries or saved profiles.
 internal static class UpdateFixture
 {
+    private sealed class FixtureWindow : Form
+    {
+        [DllImport("user32.dll",CharSet=CharSet.Unicode)]private static extern int RegisterWindowMessage(string name);
+        private static readonly int ExitMessage=RegisterWindowMessage("CinnaFanCon.RequestExit");
+        internal bool SupportsTrayClose;
+        internal Action ExitRequested;
+        protected override void WndProc(ref Message message)
+        {
+            if(SupportsTrayClose&&ExitMessage!=0&&message.Msg==ExitMessage)
+            {
+                message.Result=new IntPtr(1);BeginInvoke(ExitRequested);return;
+            }
+            base.WndProc(ref message);
+        }
+    }
     [STAThread]
     private static void Main(string[] args)
     {
@@ -26,16 +42,19 @@ internal static class UpdateFixture
                 return;
             }
             using(var worker=Process.Start(new ProcessStartInfo(Process.GetCurrentProcess().MainModule.FileName,"worker "+mutex){UseShellExecute=false,CreateNoWindow=true,WindowStyle=ProcessWindowStyle.Hidden}))
-            using(var form=new Form {Text=args[2],ShowInTaskbar=false,Left=-30000,Top=-30000,StartPosition=FormStartPosition.Manual})
+            using(var form=new FixtureWindow {Text=args[2],SupportsTrayClose=args.Length>3&&args[3]=="TrayClose",ShowInTaskbar=false,Left=-30000,Top=-30000,StartPosition=FormStartPosition.Manual})
             using(var timer=new System.Windows.Forms.Timer {Interval=100})
             {
-                bool closed=false,pending=false;
-                form.Shown+=delegate{File.WriteAllText(Path.Combine(root,"app-ready.txt"),"ready");};
+                bool closed=false,pending=false,exitRequested=false;
+                form.ExitRequested=delegate{exitRequested=true;form.Close();};
+                form.Shown+=delegate{if(args.Length>4&&args[4]=="Hidden")form.Hide();File.WriteAllText(Path.Combine(root,"app-ready.txt"),"ready");};
                 form.FormClosing+=async delegate(object sender,FormClosingEventArgs e)
                 {
                     if(closed)return;
-                    e.Cancel=true;if(pending)return;pending=true;
-                    File.AppendAllText(log,"close-requested\n");
+                    e.Cancel=true;
+                    if(form.SupportsTrayClose&&!exitRequested){File.AppendAllText(log,"window-hidden\n");form.Hide();return;}
+                    if(pending)return;pending=true;
+                    File.AppendAllText(log,form.SupportsTrayClose?"exit-requested\n":"close-requested\n");
                     if(args[0]=="Refuse")return;
                     await Task.Delay(400);
                     File.WriteAllText(stop,"stop");

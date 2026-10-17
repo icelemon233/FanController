@@ -12,8 +12,8 @@ using System.Windows;
 [assembly:AssemblyCompany("Cinna")]
 [assembly:AssemblyCopyright("Cinna")]
 [assembly:AssemblyDescription("Control supported CPU, case and GPU fans on Windows")]
-[assembly:AssemblyVersion("0.4.3.0")]
-[assembly:AssemblyFileVersion("0.4.3.0")]
+[assembly:AssemblyVersion("0.4.4.0")]
+[assembly:AssemblyFileVersion("0.4.4.0")]
 
 namespace CinnaFanCon
 {

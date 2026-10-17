@@ -100,11 +100,22 @@ Function CloseRunningApp
       ${EndIf}
     ${EndIf}
     DetailPrint "$(ClosingApp)"
-    ; WM_CLOSE goes through the app's existing fan-restoration path. Never
-    ; terminate either process or replace files while its worker still runs.
-    System::Call 'user32::SendMessageTimeoutW(p $AppWindow, i 0x0010, p 0, p 0, i 0x0003, i 3000, *p .r0) p .r1'
+    ; New versions keep WM_CLOSE in the tray. Request explicit shutdown, with
+    ; WM_CLOSE as a fallback for versions predating the tray-close protocol.
+    ; Both routes restore fans and wait for the worker; never terminate it.
+    System::Call 'user32::RegisterWindowMessageW(w "CinnaFanCon.RequestExit") i .r2'
+    ${If} $2 = 0
+      Goto close_failed
+    ${EndIf}
+    System::Call 'user32::SendMessageTimeoutW(p $AppWindow, i r2, p 0, p 0, i 0x0003, i 3000, *p .r0) p .r1'
     ${If} $1 = 0
       Goto close_failed
+    ${EndIf}
+    ${If} $0 != 1
+      System::Call 'user32::SendMessageTimeoutW(p $AppWindow, i 0x0010, p 0, p 0, i 0x0003, i 3000, *p .r0) p .r1'
+      ${If} $1 = 0
+        Goto close_failed
+      ${EndIf}
     ${EndIf}
     StrCpy $CloseChecks ${CloseWaitChecks}
   wait_for_exit:

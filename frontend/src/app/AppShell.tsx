@@ -192,7 +192,8 @@ export default function AppShell({
                 />
                 <Button
                   type="text"
-                  aria-label="关闭应用"
+                  aria-label="关闭窗口并最小化到托盘"
+                  title="最小化到托盘，继续调节风扇"
                   className="window-close"
                   icon={<CloseOutlined />}
                   onClick={() => windows.act('close')}
@@ -278,7 +279,7 @@ export default function AppShell({
             </Suspense>
             <footer className="main-footer">
               <Text type="secondary">设置保存在此电脑</Text>
-              <Text type="secondary">最小化后在托盘运行，退出前会尝试恢复原设置</Text>
+              <Text type="secondary">关闭窗口后在托盘运行，右键托盘图标可退出</Text>
             </footer>
           </main>
         </Layout.Content>

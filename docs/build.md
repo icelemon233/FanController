@@ -66,6 +66,8 @@ Profiles are saved in `%LOCALAPPDATA%\cinna-fanCon\profiles.json`. If that file 
 
 构建安装包后，可运行 `pwsh -File ./scripts/test-installer-update.ps1 -Scenario Ready` 检查自动关闭旧版的顺序。此测试在临时目录创建模拟应用和服务，复用安装器的退出逻辑，确认两者均结束后才允许更新。`Refuse` 验证退出失败时停止，`WrongPath` 验证不会关闭其他目录的同名应用，`Silent` 验证静默安装仍会拦截运行中的应用，`Idle` 验证应用未运行时可继续。测试直接调用确认后的退出流程，不自动点击安装界面，也不改动现有安装。
 
+默认测试模拟关闭到托盘的版本，通过独立窗口消息 `CinnaFanCon.RequestExit` 请求退出。加上 `-Tray` 验证隐藏到托盘后的升级；加上 `-Legacy` 验证旧名称、仅支持 `WM_CLOSE` 的版本。普通关闭窗口始终保留后台调节，托盘退出和安装器退出才会恢复风扇并结束服务。
+
 应用安装到 `%LOCALAPPDATA%\Programs\cinna-fanCon`。交互式安装会提示关闭运行中的旧版；确认后通过正常退出流程恢复风扇，并等待主程序和服务结束，最长等待约 30 秒。退出失败时停止安装，程序文件不会被修改。静默安装和卸载仍会拒绝操作运行中的应用，安装期间也会阻止启动应用。卸载仅删除安装清单中的文件，再移除空目录；`%LOCALAPPDATA%\cinna-fanCon` 中的配置会保留。
 
 安装源码位于 `installer/setup.nsi`。应用图标统一源自 `docs/brand/cinna-app-icon.png`。构建时会运行 `scripts/create-icon.ps1`，生成包含 16–256 像素图层的 Windows ICO，并同步前端 PNG。窗口、托盘、安装程序和快捷方式使用同一图标；前端构建和打包会核对图片哈希。仓库尚未配置代码签名，签名需要相应证书。

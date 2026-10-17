@@ -25,7 +25,7 @@ export class AppBoundary extends Component<
             重新加载界面
           </Button>
           {this.props.windows.desktop && (
-            <Button onClick={() => this.props.windows.act('close')}>恢复原设置并退出</Button>
+            <Button onClick={() => this.props.windows.act('exit')}>恢复原设置并退出</Button>
           )}
         </Flex>
       </Flex>
