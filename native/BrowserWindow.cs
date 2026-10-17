@@ -21,6 +21,9 @@ namespace CinnaFanCon
     {
         [DllImport("user32.dll")]private static extern bool ReleaseCapture();
         [DllImport("user32.dll")]private static extern IntPtr SendMessage(IntPtr handle,int message,IntPtr wParam,IntPtr lParam);
+        [DllImport("user32.dll")]private static extern short GetAsyncKeyState(int key);
+        [DllImport("user32.dll")]private static extern bool GetCursorPos(out ScreenPoint point);
+        [StructLayout(LayoutKind.Sequential)]private struct ScreenPoint {public int X,Y;}
         private const string Origin="https://cinna-fancon.example";
         private readonly WebView2 browser=new WebView2();
         private readonly bool demo;
@@ -57,6 +60,14 @@ namespace CinnaFanCon
             else{ShowInTaskbar=false;WindowStartupLocation=WindowStartupLocation.Manual;Left=-30000;Top=-30000;}
         }
         private void Restore(){Show();WindowState=WindowState.Normal;Activate();}
+        private void BeginWindowDrag()
+        {
+            int primaryButton=Forms.SystemInformation.MouseButtonsSwapped?0x02:0x01;
+            if(closing||WindowState==WindowState.Minimized||(GetAsyncKeyState(primaryButton)&0x8000)==0)return;
+            ScreenPoint point;if(!GetCursorPos(out point))return;
+            int coordinates=(point.X&0xffff)|((point.Y&0xffff)<<16);
+            ReleaseCapture();SendMessage(new WindowInteropHelper(this).Handle,0xA1,new IntPtr(2),new IntPtr(coordinates));
+        }
         private async Task Initialize()
         {
             try
@@ -135,7 +146,7 @@ namespace CinnaFanCon
                 else if(command.Action=="minimize")WindowState=WindowState.Minimized;
                 else if(command.Action=="maximize")WindowState=WindowState==WindowState.Maximized?WindowState.Normal:WindowState.Maximized;
                 else if(command.Action=="close")Close();
-                else if(command.Action=="drag"){ReleaseCapture();SendMessage(new WindowInteropHelper(this).Handle,0xA1,new IntPtr(2),IntPtr.Zero);}
+                else if(command.Action=="drag")BeginWindowDrag();
                 else if(command.Action=="enableMotherboard")await EnableMotherboard(command.Id);
                 else if(command.Action=="smart"||command.Action=="release"||command.Action=="apply"||command.Action=="rescan")
                 {
@@ -189,6 +200,38 @@ namespace CinnaFanCon
             }
             finally{setupPending=false;}
         }
+        private async Task VerifyWindowDragRouting()
+        {
+            string result=await browser.CoreWebView2.ExecuteScriptAsync(@"(()=>{
+                const port=window.chrome.webview,original=port.postMessage,actions=[];
+                const windowActions=['drag','minimize','maximize','close'];
+                const intercept=message=>{if(windowActions.includes(message.Action))actions.push(message.Action);else original.call(port,message);};
+                const check=(value,message)=>{if(!value)throw new Error(message);};
+                const down=(target,button=0,isPrimary=true)=>{
+                    check(target,'A window control or drag target is missing.');
+                    const event=new PointerEvent('pointerdown',{bubbles:true,cancelable:true,button,isPrimary,pointerType:'mouse'});
+                    target.dispatchEvent(event);return event.defaultPrevented;
+                };
+                const control=name=>document.querySelector('[aria-label='+JSON.stringify(name)+']');
+                try{
+                    port.postMessage=intercept;check(port.postMessage===intercept,'Could not observe window actions.');
+                    const side=document.querySelector('.app-sidebar').getBoundingClientRect();
+                    const padding=document.elementFromPoint(side.left+20,side.top+15);
+                    for(const [target,label] of [[padding,'Sidebar top padding'],[document.querySelector('.brand-name'),'Sidebar brand'],[document.querySelector('.app-header .ant-typography'),'Header title']]){
+                        actions.length=0;check(down(target)&&actions.length===1&&actions[0]==='drag',label+' did not start a window drag.');
+                    }
+                    actions.length=0;down(padding,2);down(padding,1);down(padding,0,false);
+                    check(actions.length===0,'Secondary or non-primary pointer input started a drag.');
+                    for(const target of [control('切换主题'),control('最小化'),control('最大化或还原'),control('关闭应用'),control('使用帮助'),document.querySelector('[data-testid=advanced-menu]')])down(target.querySelector('svg path')||target);
+                    check(actions.length===0,'An interactive control started a window drag.');
+                    for(const [label,action] of [['最小化','minimize'],['最大化或还原','maximize'],['关闭应用','close']]){
+                        control(label).click();check(actions.pop()===action,'A window control lost its click action.');
+                    }
+                    return true;
+                }catch(error){return error.message;}finally{port.postMessage=original;}
+            })()");
+            if(result!="true")throw new Exception("Window drag routing regression: "+result);
+        }
         private async Task WaitForUi(string condition,string failure)
         {
             for(int i=0;i<50;i++)
@@ -206,6 +249,7 @@ namespace CinnaFanCon
                 if(smokeReport!=null)
                 {
                     if(!demo)throw new InvalidOperationException("界面操作测试只能在演示模式运行。");
+                    await VerifyWindowDragRouting();
                     await browser.CoreWebView2.ExecuteScriptAsync("if(document.querySelector('.app-layout').dataset.theme==='dark')document.querySelector('[aria-label=\"切换主题\"]').click()");await Task.Delay(600);
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=mode-均衡]').click()");
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=smart-start]').click()");
@@ -252,7 +296,7 @@ namespace CinnaFanCon
                     string restoredSidebar=await browser.CoreWebView2.ExecuteScriptAsync("getComputedStyle(document.querySelector('.app-sidebar')).backgroundColor");
                     if(restoredSidebar!=lightSidebar)throw new Exception("Switching back to the light theme did not restore the sidebar surface.");
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=mode-均衡]').click()");
-                    File.WriteAllText(smokeReport,"PASS: WebView2 UI communicates with the native worker\r\nPASS: automatic control acquires four simulated fans and matches temperature sources\r\nPASS: switching to Quiet mode updates the native planner\r\nPASS: restoring prior settings releases all four simulated fan ports\r\nPASS: live telemetry preserves the fan editor draft\r\nPASS: the next preset skips a fan excluded in its settings\r\nPASS: switching themes updates the desktop surface, sidebar and navigation menu\r\nThis test uses simulated fans and does not access physical hardware.\r\n");
+                    File.WriteAllText(smokeReport,"PASS: WebView2 UI communicates with the native worker\r\nPASS: sidebar padding, brand and header route window drags; controls and secondary input remain independent\r\nPASS: automatic control acquires four simulated fans and matches temperature sources\r\nPASS: switching to Quiet mode updates the native planner\r\nPASS: restoring prior settings releases all four simulated fan ports\r\nPASS: live telemetry preserves the fan editor draft\r\nPASS: the next preset skips a fan excluded in its settings\r\nPASS: switching themes updates the desktop surface, sidebar and navigation menu\r\nThis test uses simulated fans and does not access physical hardware.\r\n");
                 }
                 await Task.Delay(smokeReport==null?400:2300);
                 using(var stream=File.Create(capturePath))await browser.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,stream);

@@ -6,7 +6,7 @@
 
 A Windows application that adjusts supported CPU, case and GPU fans by temperature. Choose a preset or configure individual fan groups with a temperature curve or fixed output.
 
-[Download the Windows installer](https://github.com/icelemon233/cinna-fanCon/releases/download/v0.3.4/cinna-fanCon-v0.3.4-windows-x64-setup.exe) · [Portable ZIP](https://github.com/icelemon233/cinna-fanCon/releases/tag/v0.3.4) · [Build from source](./docs/build.md)
+[Download the Windows installer](https://github.com/icelemon233/cinna-fanCon/releases/download/v0.3.5/cinna-fanCon-v0.3.5-windows-x64-setup.exe) · [Portable ZIP](https://github.com/icelemon233/cinna-fanCon/releases/tag/v0.3.5) · [Build from source](./docs/build.md)
 
 <img src="./docs/images/overview.png" alt="cinna-fanCon overview in demo mode with simulated temperature and fan readings" width="960" />
 

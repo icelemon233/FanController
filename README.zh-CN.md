@@ -6,7 +6,7 @@
 
 根据温度调节受支持的 CPU、机箱和显卡风扇的 Windows 应用。可以选择预设模式，也可以单独设置某组风扇的曲线或固定输出。
 
-[下载 Windows 安装程序](https://github.com/icelemon233/cinna-fanCon/releases/download/v0.3.4/cinna-fanCon-v0.3.4-windows-x64-setup.exe) · [便携 ZIP](https://github.com/icelemon233/cinna-fanCon/releases/tag/v0.3.4) · [从源码构建](./docs/build.md)
+[下载 Windows 安装程序](https://github.com/icelemon233/cinna-fanCon/releases/download/v0.3.5/cinna-fanCon-v0.3.5-windows-x64-setup.exe) · [便携 ZIP](https://github.com/icelemon233/cinna-fanCon/releases/tag/v0.3.5) · [从源码构建](./docs/build.md)
 
 <img src="./docs/images/overview.png" alt="cinna-fanCon 散热概览，使用模拟温度和风扇读数" width="960" />
 

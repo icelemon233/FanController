@@ -27,13 +27,20 @@ button {
 }
 .app-sidebar.ant-layout-sider {
   background: var(--fd-nav-bg);
-  padding: 30px 0 24px;
+  padding: 0 0 24px;
+}
+[data-window-drag] {
+  user-select: none;
+  touch-action: none;
+}
+.sidebar-titlebar {
+  padding: 30px 0 40px;
 }
 .brand {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin: 0 22px 40px;
+  margin: 0 22px;
 }
 .brand-icon {
   width: 36px;
@@ -103,7 +110,6 @@ button {
   align-items: center;
   line-height: normal;
   flex-shrink: 0;
-  user-select: none;
   background: var(--fd-layout);
 }
 .app-header .ant-typography {

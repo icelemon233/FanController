@@ -24,7 +24,7 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import { lazy, Suspense, useState } from 'react';
+import { lazy, type PointerEvent, Suspense, useState } from 'react';
 import version from '../../../version.json';
 import { FanIcon } from '../components/FanIcon.tsx';
 import { ConnectionNotice } from '../features/fans/ConnectionNotice.tsx';
@@ -57,8 +57,22 @@ export default function AppShell({
   const connected = state.connection.kind === 'ready';
   const dark = mode === 'dark';
   const openDevices = () => setPage('devices');
+  const dragWindow = (event: PointerEvent<HTMLElement>) => {
+    if (!windows.desktop || event.button !== 0 || !event.isPrimary) return;
+    const target = event.target;
+    if (
+      !(target instanceof Element) ||
+      !target.closest('[data-window-drag]') ||
+      target.closest(
+        'button,a,input,select,textarea,[role="button"],[role="menuitem"],[contenteditable]',
+      )
+    )
+      return;
+    event.preventDefault();
+    windows.act('drag');
+  };
   return (
-    <Layout className="app-layout" data-ui data-theme={mode}>
+    <Layout className="app-layout" data-ui data-theme={mode} onPointerDown={dragWindow}>
       <Layout.Sider
         className="app-sidebar"
         width={208}
@@ -67,17 +81,19 @@ export default function AppShell({
         trigger={null}
         theme={mode}
       >
-        <div className="brand">
-          <div className="brand-icon">
-            <FanIcon style={{ fontSize: 28 }} />
-          </div>
-          <div>
-            <Text strong className="brand-name">
-              cinna-fanCon
-            </Text>
-            <Text type="secondary" className="brand-caption">
-              Windows 风扇控制
-            </Text>
+        <div className="sidebar-titlebar" data-window-drag>
+          <div className="brand">
+            <div className="brand-icon">
+              <FanIcon style={{ fontSize: 28 }} />
+            </div>
+            <div>
+              <Text strong className="brand-name">
+                cinna-fanCon
+              </Text>
+              <Text type="secondary" className="brand-caption">
+                Windows 风扇控制
+              </Text>
+            </div>
           </div>
         </div>
         <Menu
@@ -119,17 +135,7 @@ export default function AppShell({
         </div>
       </Layout.Sider>
       <Layout style={{ minWidth: 0, background: 'var(--fd-layout)' }}>
-        <Layout.Header
-          className="app-header"
-          onPointerDown={(event) => {
-            if (
-              windows.desktop &&
-              event.target instanceof Element &&
-              !event.target.closest('button,a,input')
-            )
-              windows.act('drag');
-          }}
-        >
+        <Layout.Header className="app-header" data-window-drag>
           <Space size={10}>
             <Text type="secondary">cinna-fanCon</Text>
             <Text strong>{page === 'home' ? '散热概览' : '风扇设置'}</Text>
