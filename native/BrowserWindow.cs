@@ -47,9 +47,10 @@ namespace CinnaFanCon
             if(capturePath==null)
             {
                 tray=new Forms.NotifyIcon {Icon=System.Drawing.Icon.ExtractAssociatedIcon(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"cinna-fanCon.exe")),Text="cinna-fanCon · 风扇控制",Visible=true};
-                var menu=new Forms.ContextMenuStrip();menu.Items.Add("打开 cinna-fanCon",null,delegate{Dispatcher.BeginInvoke(new Action(Restore));});
-                menu.Items.Add("恢复所有风扇原设置",null,delegate{if(worker!=null)worker.Send(new WireMessage {Type="command",Id="tray-release",Action="release"});});
-                menu.Items.Add("恢复原设置并退出",null,delegate{Dispatcher.BeginInvoke(new Action(()=>Close()));});
+                var menu=new TrayContextMenu(
+                    ()=>Dispatcher.BeginInvoke(new Action(Restore)),
+                    ()=>{if(worker!=null)worker.Send(new WireMessage {Type="command",Id="tray-release",Action="release"});},
+                    ()=>Dispatcher.BeginInvoke(new Action(()=>Close())));
                 tray.ContextMenuStrip=menu;tray.DoubleClick+=delegate{Dispatcher.BeginInvoke(new Action(Restore));};
                 StateChanged+=delegate{if(WindowState==WindowState.Minimized)Hide();};
             }
@@ -269,7 +270,7 @@ namespace CinnaFanCon
                 {
                     Post(new WireMessage {Type="notice",Message="尚未完成风扇恢复，应用将继续运行。请稍后重试退出。",Success=false});stopPending=false;return;
                 }
-                closing=true;if(worker!=null)worker.Dispose();if(tray!=null){tray.Visible=false;tray.Dispose();}browser.Dispose();Close();
+                closing=true;if(worker!=null)worker.Dispose();if(tray!=null){var menu=tray.ContextMenuStrip;tray.Visible=false;tray.Dispose();if(menu!=null)menu.Dispose();}browser.Dispose();Close();
             }
             catch(Exception error){stopPending=false;Post(new WireMessage {Type="notice",Message=error.Message,Success=false});}
         }

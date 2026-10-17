@@ -1,4 +1,12 @@
-# Interface design — v0.3.0
+# Interface design
+
+## Tray context menu — v0.3.4
+
+The tray's right-click menu keeps the native Windows menu control and the existing open, restore and exit commands. Its renderer uses 36-DIP rows, 14-DIP text, monochrome line icons, inset rounded selection and a separator before exit. Windows 11 supplies the outer rounded frame and shadow through DWM; Windows 10 uses a simple border. The palette follows the Windows app theme on each opening and uses system colours in high contrast. Pixel-sized fonts and native window DPI keep the menu's text and geometry on the same scale. Both palettes, keyboard selection, Enter, Escape and outside-click dismissal were inspected in an isolated preview using the production menu class; the preview callbacks only wrote test logs.
+
+托盘右键菜单保留系统菜单控件及原有的打开、恢复和退出操作。菜单行高为 36 DIP，文字为 14 DIP，配合线条图标、圆角选中背景和退出项前的分隔线。Windows 11 使用系统圆角和阴影，Windows 10 使用细边框。菜单每次打开时读取 Windows 应用主题，高对比度模式使用系统颜色。已在独立预览中检查两种配色、键盘选择、Enter、Esc 和点击外部关闭；预览操作只写入测试日志。
+
+## Main interface — v0.3.0
 
 The interface follows taste-skill's **The well-kept board** direction, seed **239198202**, with the **Night and cornflower** palette and the existing Segoe UI / Microsoft YaHei UI type system. There were no redraws.
 
@@ -8,7 +16,7 @@ This is a desktop control interface. The skill's photography and scroll-animatio
 
 The interface was inspected in a real browser at 1440, 920 and 390 pixels, and in the native WebView2 host. The 390-pixel preview is a supplementary check; the Windows application has its own minimum window size. Both themes, fan settings, the curve editor, setup instructions and help were checked with simulated hardware. The source lint and final browser inspection reported no remaining findings with the three documented allowances: `few-pictures`, `no-footage`, `still-page`.
 
-## Critique
+### Critique
 
 ```text
 ROUND 1
@@ -44,7 +52,7 @@ Remaining limitations: long hardware names truncate; smaller windows scroll. No 
 
 These are internal critique scores. All published screenshots use Demo CPU, Demo GPU and Demo Motherboard. They contain no personal hardware report. The fan icon is drawn from the app's existing four-blade glyph; it does not stand in for a product photograph. There is no sample content to replace before release.
 
-## 简体中文
+### 简体中文
 
 界面采用 taste-skill 的 **The well-kept board** 方向，seed 为 **239198202**，配色为 **Night and cornflower**，保留现有系统字体，未重新抽取方向。
 

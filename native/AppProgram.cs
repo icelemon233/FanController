@@ -9,8 +9,8 @@ using System.Windows;
 
 [assembly:AssemblyTitle("cinna-fanCon")]
 [assembly:AssemblyDescription("Control supported CPU, case and GPU fans on Windows")]
-[assembly:AssemblyVersion("0.3.3.0")]
-[assembly:AssemblyFileVersion("0.3.3.0")]
+[assembly:AssemblyVersion("0.3.4.0")]
+[assembly:AssemblyFileVersion("0.3.4.0")]
 
 namespace CinnaFanCon
 {
@@ -49,6 +49,8 @@ namespace CinnaFanCon
                         try{using(var installation=Mutex.OpenExisting(@"Local\cinna-fanCon.Installing"))installing=true;}
                         catch(WaitHandleCannotBeOpenedException){ }
                         if(installing)throw new InvalidOperationException("安装或卸载正在进行，请完成后再打开应用。");
+                        System.Windows.Forms.Application.EnableVisualStyles();
+                        System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
                         var app=new Application {ShutdownMode=ShutdownMode.OnMainWindowClose};
                         var window=new BrowserWindow(demo,capture,smoke?args[1]:null);
                         app.Run(window);return window.TestExitCode;

@@ -1,4 +1,4 @@
-Third-party components used by cinna-fanCon 0.3.3
+Third-party components used by cinna-fanCon 0.3.4
 
 LibreHardwareMonitor 0.9.6 -- MPL-2.0
 Source: https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/tree/3d331e3370efb858411f19511373eff65a218701
