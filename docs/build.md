@@ -58,7 +58,7 @@ Profiles are saved in `%LOCALAPPDATA%\cinna-fanCon\profiles.json`. If that file 
 
 `package.ps1` 将便携 ZIP 和 SHA-256 文件写入 `dist`。PawnIO 安装器不随 ZIP 分发，应用会在主板设置需要时从官方发布地址下载固定版本。
 
-`build-installer.ps1` 校验并解压固定版本的 NSIS 编译器，无需在系统中安装编译器。生成的安装 EXE 支持当前用户安装、可选桌面快捷方式、开始菜单入口及卸载，文件和 SHA-256 位于 `dist`。随安装包附带的 WebView2 引导安装器会校验 SHA-256 和微软数字签名，仅在缺少运行库时使用。
+`build-installer.ps1` 校验并解压固定版本的 NSIS 编译器，无需在系统中安装编译器。生成的安装 EXE 支持当前用户安装、开始菜单入口及卸载，默认勾选桌面快捷方式和安装后打开，用户可取消。启动应用前会释放安装互斥锁。文件和 SHA-256 位于 `dist`。随安装包附带的 WebView2 引导安装器会校验 SHA-256 和微软数字签名，仅在缺少运行库时使用。
 
 微软下载地址上的安装器可能更新。文件变化后，校验会拒绝构建；确认微软签名后，再更新 `scripts/dependencies.json` 中的哈希。
 

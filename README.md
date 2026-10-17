@@ -6,7 +6,7 @@
 
 A Windows application that adjusts supported CPU, case and GPU fans by temperature. Build a quiet-first control plan, review each fan’s settings, then apply it. Temperature curves and fixed output remain editable per fan group.
 
-[Download the Windows installer](https://github.com/icelemon233/FanController/releases/download/v0.4.2/FanController-v0.4.2-windows-x64-setup.exe) · [Portable ZIP](https://github.com/icelemon233/FanController/releases/tag/v0.4.2) · [Build from source](./docs/build.md)
+[Download the Windows installer](https://github.com/icelemon233/FanController/releases/download/v0.4.3/FanController-v0.4.3-windows-x64-setup.exe) · [Portable ZIP](https://github.com/icelemon233/FanController/releases/tag/v0.4.3) · [Build from source](./docs/build.md)
 
 <img src="./docs/images/overview.png" alt="FanController overview in demo mode with simulated temperature and fan readings" width="960" />
 
@@ -14,7 +14,7 @@ A Windows application that adjusts supported CPU, case and GPU fans by temperatu
 
 ## Use the app
 
-1. Run the Windows installer, then open **FanController** from the Start menu. A desktop shortcut is optional.
+1. Run the Windows installer. Creating a desktop shortcut and opening **FanController** after installation are selected by default; either option can be cleared.
 2. Open **配置与预览** (Configure and preview). Confirm CPU and case fan roles against the actual wiring. Unidentified channels and pumps stay under their prior settings; GPU fans default to driver control.
 3. Edit each selected fan’s source, minimum output, curve and response smoothing. Click **预览应用内容** (Review changes) to see every channel and exact parameter, then **应用方案** (Apply plan).
 

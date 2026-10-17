@@ -29,7 +29,8 @@ VIAddVersionKey /LANG=1033 "CompanyName" "Cinna"
 !define MUI_WELCOMEPAGE_TITLE "FanController ${AppVersion}"
 !define MUI_WELCOMEPAGE_TEXT "$(WelcomeText)"
 !define MUI_FINISHPAGE_RUN "$INSTDIR\FanController.exe"
-!define MUI_FINISHPAGE_RUN_NOTCHECKED
+!define MUI_FINISHPAGE_RUN_TEXT "$(OpenAfterInstall)"
+!define MUI_FINISHPAGE_RUN_FUNCTION OpenInstalledApp
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_COMPONENTS
 !insertmacro MUI_PAGE_INSTFILES
@@ -45,6 +46,8 @@ LangString AppSection ${LANG_SIMPCHINESE} "FanController 应用（必选）"
 LangString AppSection ${LANG_ENGLISH} "FanController application (required)"
 LangString DesktopShortcut ${LANG_SIMPCHINESE} "桌面快捷方式"
 LangString DesktopShortcut ${LANG_ENGLISH} "Desktop shortcut"
+LangString OpenAfterInstall ${LANG_SIMPCHINESE} "打开 FanController"
+LangString OpenAfterInstall ${LANG_ENGLISH} "Open FanController"
 LangString AppRunning ${LANG_SIMPCHINESE} "请先从托盘退出 FanController，等待风扇恢复后再安装或卸载。安装程序不会强制结束风扇服务。"
 LangString AppRunning ${LANG_ENGLISH} "Exit FanController from the tray and wait for the fans to be restored before installing or uninstalling. Setup will not force the fan worker to stop."
 LangString CloseAppPrompt ${LANG_SIMPCHINESE} "FanController 正在运行。$\r$\n$\r$\n点击“确定”后，安装程序会请求应用正常退出，等待风扇恢复和服务结束后继续安装。$\r$\n$\r$\n点击“取消”可停止安装，继续使用当前版本。"
@@ -214,10 +217,19 @@ Section "$(AppSection)" Application
   System::Call 'shell32::SHChangeNotify(i 0x00002000, i 0x0005, w "$SMPROGRAMS\FanController\FanController.lnk", p 0)'
 SectionEnd
 
-Section /o "$(DesktopShortcut)" Desktop
+Section "$(DesktopShortcut)" Desktop
   CreateShortcut "$DESKTOP\FanController.lnk" "$INSTDIR\FanController.exe" "" "$INSTDIR\FanController.exe" 0
   System::Call 'shell32::SHChangeNotify(i 0x00002000, i 0x0005, w "$DESKTOP\FanController.lnk", p 0)'
 SectionEnd
+
+Function OpenInstalledApp
+  ; Installation is complete; release the startup guard before launching the app.
+  ${If} $SetupMutex != 0
+    System::Call 'kernel32::CloseHandle(p $SetupMutex)'
+    StrCpy $SetupMutex 0
+  ${EndIf}
+  Exec '$\"$INSTDIR\FanController.exe$\"'
+FunctionEnd
 
 Function un.onInit
   Call un.Guard

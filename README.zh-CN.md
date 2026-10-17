@@ -6,7 +6,7 @@
 
 根据温度调节受支持的 CPU、机箱和显卡风扇的 Windows 应用。以日常安静为起点，逐组配置、核对参数后应用，也可以单独设置曲线或固定输出。
 
-[下载 Windows 安装程序](https://github.com/icelemon233/FanController/releases/download/v0.4.2/FanController-v0.4.2-windows-x64-setup.exe) · [便携 ZIP](https://github.com/icelemon233/FanController/releases/tag/v0.4.2) · [从源码构建](./docs/build.md)
+[下载 Windows 安装程序](https://github.com/icelemon233/FanController/releases/download/v0.4.3/FanController-v0.4.3-windows-x64-setup.exe) · [便携 ZIP](https://github.com/icelemon233/FanController/releases/tag/v0.4.3) · [从源码构建](./docs/build.md)
 
 <img src="./docs/images/overview.png" alt="FanController 散热概览，使用模拟温度和风扇读数" width="960" />
 
@@ -14,7 +14,7 @@
 
 ## 使用
 
-1. 运行 Windows 安装程序，完成后从开始菜单打开 **FanController**。安装时可选桌面快捷方式。
+1. 运行 Windows 安装程序，默认创建桌面快捷方式，并在完成页默认勾选“打开 FanController”；两项都可取消。
 2. 打开“配置与预览”，按实际接线确认 CPU 和机箱风扇。未确认通道与水泵保留原设置，显卡默认由驱动调节。
 3. 逐组修改温度来源、最低输出、曲线和平滑时间。点击“预览应用内容”，核对每组通道与参数，再点击“应用方案”。
 
