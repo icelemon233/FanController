@@ -64,13 +64,15 @@ Profiles are saved in `%LOCALAPPDATA%\cinna-fanCon\profiles.json`. If that file 
 
 在尚未安装 cinna-fanCon 的 Windows 账户下，可运行 `pwsh -File ./scripts/test-installer.ps1`。测试会临时安装应用、运行桌面演示、重复安装以验证升级，再卸载；同时检查运行中拦截和安装清单外文件的保留。已有安装不会被修改，测试不控制真实风扇。缺少 WebView2 时的联网安装分支，需另用干净系统验证。
 
-应用安装到 `%LOCALAPPDATA%\Programs\cinna-fanCon`。应用或风扇服务运行时会阻止安装和卸载，安装期间也会阻止启动应用。卸载仅删除安装清单中的文件，再移除空目录；`%LOCALAPPDATA%\cinna-fanCon` 中的配置会保留。
+构建安装包后，可运行 `pwsh -File ./scripts/test-installer-update.ps1 -Scenario Ready` 检查自动关闭旧版的顺序。此测试在临时目录创建模拟应用和服务，复用安装器的退出逻辑，确认两者均结束后才允许更新。`Refuse` 验证退出失败时停止，`WrongPath` 验证不会关闭其他目录的同名应用，`Silent` 验证静默安装仍会拦截运行中的应用，`Idle` 验证应用未运行时可继续。测试直接调用确认后的退出流程，不自动点击安装界面，也不改动现有安装。
+
+应用安装到 `%LOCALAPPDATA%\Programs\cinna-fanCon`。交互式安装会提示关闭运行中的旧版；确认后通过正常退出流程恢复风扇，并等待主程序和服务结束，最长等待约 30 秒。退出失败时停止安装，程序文件不会被修改。静默安装和卸载仍会拒绝操作运行中的应用，安装期间也会阻止启动应用。卸载仅删除安装清单中的文件，再移除空目录；`%LOCALAPPDATA%\cinna-fanCon` 中的配置会保留。
 
 安装源码位于 `installer/setup.nsi`。应用图标源自 `frontend/public/app.svg`，`scripts/create-icon.ps1` 用于生成 Windows ICO。仓库尚未配置代码签名，签名需要相应证书。
 
 前端开发使用上方 pnpm 命令。`check` 检查实际源码、测试与 Vite 配置，并运行模块边界、循环依赖、格式和行为测试。开发服务器可使用明确标注的演示设备；构建后的浏览器演示使用 `build:demo` 与 `preview:demo`，输出到独立目录。桌面生产包缺少原生桥接时显示错误，不自动回退为模拟设备。
 
-状态归属、生命周期和桥接契约见[前端架构说明](./frontend-architecture.md)。GitHub 工作流以只读权限检查前端和 Windows 核心；桌面和安装测试仍在本机 Windows 桌面会话运行。原生源码位于 `native`，前端源码位于 `frontend/src`，第三方说明位于 `third-party`，原生依赖版本记录在 `scripts/dependencies.json`。
+状态归属、生命周期和桥接契约见[前端架构说明](./frontend-architecture.md)。GitHub 工作流以只读权限检查前端和 Windows 核心，构建安装包并验证隔离的退出流程。完整桌面和安装生命周期测试仍在本机 Windows 桌面会话运行。原生源码位于 `native`，前端源码位于 `frontend/src`，第三方说明位于 `third-party`，原生依赖版本记录在 `scripts/dependencies.json`。
 
 风扇配置保存在 `%LOCALAPPDATA%\cinna-fanCon\profiles.json`。该文件不存在时，可读取旧名称下的 `%LOCALAPPDATA%\FanDesk\profiles.json`，后续保存使用新目录。两个版本共用进程锁，避免同时调节同一组风扇。
 

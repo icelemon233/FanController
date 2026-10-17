@@ -4,7 +4,7 @@
 
 根据温度调节受支持的 CPU、机箱和显卡风扇的 Windows 应用。可以选择预设模式，也可以单独设置某组风扇的曲线或固定输出。
 
-[下载 Windows 安装程序](https://github.com/icelemon233/cinna-fanCon/releases/download/v0.3.2/cinna-fanCon-v0.3.2-windows-x64-setup.exe) · [便携 ZIP](https://github.com/icelemon233/cinna-fanCon/releases/tag/v0.3.2) · [从源码构建](./docs/build.md)
+[下载 Windows 安装程序](https://github.com/icelemon233/cinna-fanCon/releases/download/v0.3.3/cinna-fanCon-v0.3.3-windows-x64-setup.exe) · [便携 ZIP](https://github.com/icelemon233/cinna-fanCon/releases/tag/v0.3.3) · [从源码构建](./docs/build.md)
 
 <img src="./docs/images/overview.png" alt="cinna-fanCon 散热概览，使用模拟温度和风扇读数" width="960" />
 
@@ -30,7 +30,7 @@
 
 最小化后，应用继续在托盘运行。点击主题按钮可切换深浅色界面。首次使用默认为深色，已有主题偏好会保留。
 
-安装程序为当前用户安装应用，并添加 Windows“已安装的应用”记录。升级或卸载前，请先退出应用，等待风扇恢复。卸载会删除安装的程序文件和快捷方式，保留已保存的风扇配置。安装包目前尚未代码签名。
+安装程序为当前用户安装应用，并添加 Windows“已安装的应用”记录。更新时确认关闭提示后，安装程序会请求旧版正常退出，等待风扇恢复和服务结束后继续安装。退出失败时会停止，程序文件不会被修改。静默安装和卸载仍需先退出应用。卸载会删除安装的程序文件和快捷方式，保留已保存的风扇配置。安装包目前尚未代码签名。
 
 使用便携版时，完整解压 ZIP 后打开 `cinna-fanCon.exe`。
 

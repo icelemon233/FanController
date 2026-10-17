@@ -46,6 +46,12 @@ LangString DesktopShortcut ${LANG_SIMPCHINESE} "桌面快捷方式"
 LangString DesktopShortcut ${LANG_ENGLISH} "Desktop shortcut"
 LangString AppRunning ${LANG_SIMPCHINESE} "请先从托盘退出 cinna-fanCon，等待风扇恢复后再安装或卸载。安装程序不会强制结束风扇服务。"
 LangString AppRunning ${LANG_ENGLISH} "Exit cinna-fanCon from the tray and wait for the fans to be restored before installing or uninstalling. Setup will not force the fan worker to stop."
+LangString CloseAppPrompt ${LANG_SIMPCHINESE} "cinna-fanCon 正在运行。$\r$\n$\r$\n点击“确定”后，安装程序会请求应用正常退出，等待风扇恢复和服务结束后继续安装。$\r$\n$\r$\n点击“取消”可停止安装，继续使用当前版本。"
+LangString CloseAppPrompt ${LANG_ENGLISH} "cinna-fanCon is running.$\r$\n$\r$\nClick OK to close the app normally. Setup will wait for fan restoration and the worker to exit before continuing.$\r$\n$\r$\nClick Cancel to stop setup and keep using the current version."
+LangString ClosingApp ${LANG_SIMPCHINESE} "正在请求应用退出，等待风扇恢复和服务结束…"
+LangString ClosingApp ${LANG_ENGLISH} "Closing the app and waiting for fan restoration and the worker to exit..."
+LangString CloseAppFailed ${LANG_SIMPCHINESE} "应用或风扇服务未能正常退出，安装已停止。$\r$\n$\r$\n程序文件尚未修改。请查看应用中的风扇恢复提示；如果应用以管理员身份运行，请用相同权限运行安装程序后再试。"
+LangString CloseAppFailed ${LANG_ENGLISH} "The app or fan worker could not exit normally. Setup has stopped.$\r$\n$\r$\nNo program files were changed. Check the app for fan-restoration messages. If the app is running as administrator, run setup with the same privileges and try again."
 LangString SetupRunning ${LANG_SIMPCHINESE} "另一个安装或卸载程序正在运行，请等待完成。"
 LangString SetupRunning ${LANG_ENGLISH} "Another installation or uninstallation is running. Wait for it to finish."
 LangString UnsupportedWindows ${LANG_SIMPCHINESE} "此安装包需要 Windows 10/11 x64。"
@@ -62,8 +68,14 @@ LangString UpgradeFailed ${LANG_ENGLISH} "The previous version could not be unin
 Var SetupMutex
 Var RuntimeInstalled
 
+!define RunningMutex "Local\cinna-fanCon.Running"
+!define CurrentWindowTitle "cinna-fanCon · 风扇控制"
+!define LegacyWindowTitle "cinna-fanCon · 智能散热"
+!include "${ProjectRoot}\installer\RunningApp.nsh"
+!insertmacro RunningCheck "un."
+
 !macro Guard Prefix
-Function ${Prefix}Guard
+Function ${Prefix}ValidateLocation
   SetShellVarContext current
   SetRegView 64
   GetFullPathName $0 "$INSTDIR"
@@ -73,17 +85,11 @@ Function ${Prefix}Guard
     SetErrorLevel 11
     Quit
   ${EndIf}
-  System::Call 'kernel32::OpenMutexW(i 0x100000, i 0, w "Local\cinna-fanCon.Running") p .r0'
-  ${If} $0 != 0
-    System::Call 'kernel32::CloseHandle(p r0)'
-    MessageBox MB_OK|MB_ICONEXCLAMATION "$(AppRunning)" /SD IDOK
-    SetErrorLevel 10
-    Quit
-  ${EndIf}
-  FindWindow $0 "" "cinna-fanCon · 风扇控制"
-  FindWindow $1 "" "cinna-fanCon · 智能散热"
-  ${If} $0 != 0
-  ${OrIf} $1 != 0
+FunctionEnd
+Function ${Prefix}Guard
+  Call ${Prefix}ValidateLocation
+  Call ${Prefix}CheckRunning
+  ${If} $AppIsRunning != 0
     MessageBox MB_OK|MB_ICONEXCLAMATION "$(AppRunning)" /SD IDOK
     SetErrorLevel 10
     Quit
@@ -105,7 +111,7 @@ Function .onInit
     SetErrorLevel 12
     Quit
   ${EndIf}
-  Call Guard
+  Call ValidateLocation
   ${IfNot} ${RunningX64}
     MessageBox MB_OK|MB_ICONSTOP "$(UnsupportedWindows)" /SD IDOK
     SetErrorLevel 13
@@ -142,7 +148,8 @@ FunctionEnd
 
 Section "$(AppSection)" Application
   SectionIn RO
-  Call Guard
+  Call ValidateLocation
+  Call PrepareForInstall
   Call DetectRuntime
   ${If} $RuntimeInstalled = 0
     InitPluginsDir

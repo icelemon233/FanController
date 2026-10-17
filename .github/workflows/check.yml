@@ -3,9 +3,9 @@ name: Frontend and Windows checks
 on:
   push:
     branches: [main]
-    paths: ["frontend/**", "native/**", "scripts/**", "version.json", ".github/workflows/check.yml"]
+    paths: ["frontend/**", "native/**", "installer/**", "scripts/**", "version.json", ".github/workflows/check.yml"]
   pull_request:
-    paths: ["frontend/**", "native/**", "scripts/**", "version.json", ".github/workflows/check.yml"]
+    paths: ["frontend/**", "native/**", "installer/**", "scripts/**", "version.json", ".github/workflows/check.yml"]
   workflow_dispatch:
 
 permissions:
@@ -45,4 +45,13 @@ jobs:
       - run: ./scripts/build.ps1
         shell: pwsh
       - run: ./scripts/test.ps1
+        shell: pwsh
+      - name: Build Windows installer
+        run: ./scripts/build-installer.ps1
+        shell: pwsh
+      - name: Test update shutdown
+        run: |
+          foreach ($scenario in @('Ready','Refuse','WrongPath','Silent','Idle')) {
+            ./scripts/test-installer-update.ps1 -Scenario $scenario
+          }
         shell: pwsh

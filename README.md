@@ -4,7 +4,7 @@ English | [简体中文](./README.zh-CN.md)
 
 A Windows application that adjusts supported CPU, case and GPU fans by temperature. Choose a preset or configure individual fan groups with a temperature curve or fixed output.
 
-[Download the Windows installer](https://github.com/icelemon233/cinna-fanCon/releases/download/v0.3.2/cinna-fanCon-v0.3.2-windows-x64-setup.exe) · [Portable ZIP](https://github.com/icelemon233/cinna-fanCon/releases/tag/v0.3.2) · [Build from source](./docs/build.md)
+[Download the Windows installer](https://github.com/icelemon233/cinna-fanCon/releases/download/v0.3.3/cinna-fanCon-v0.3.3-windows-x64-setup.exe) · [Portable ZIP](https://github.com/icelemon233/cinna-fanCon/releases/tag/v0.3.3) · [Build from source](./docs/build.md)
 
 <img src="./docs/images/overview.png" alt="cinna-fanCon overview in demo mode with simulated temperature and fan readings" width="960" />
 
@@ -30,7 +30,7 @@ Open **风扇设置** (Fan settings) to edit a group's curve, fixed output, mini
 
 Minimizing keeps the app running in the tray. The theme button switches between light and dark appearances. New installations start with the dark theme; an existing preference is preserved.
 
-The installer sets up the app for the current user and adds an entry in Windows Installed apps. Exit the app and wait for fan restoration before upgrading or uninstalling. Uninstall removes packaged files and shortcuts; saved fan profiles remain. The installer is currently unsigned.
+The installer sets up the app for the current user and adds an entry in Windows Installed apps. During an interactive update, confirm the close prompt and setup will close the existing app normally, wait for fan restoration and the worker to exit, then continue. If shutdown fails, setup stops before changing program files. Silent installation and uninstall still require the app to be closed first. Uninstall removes packaged files and shortcuts; saved fan profiles remain. The installer is currently unsigned.
 
 For the portable edition, extract the complete ZIP and open `cinna-fanCon.exe`.
 
