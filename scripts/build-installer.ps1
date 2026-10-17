@@ -8,7 +8,22 @@ New-Item -ItemType Directory -Force -Path $fanCache | Out-Null
 if(-not $CompilerPath){
   $fanDependency=$fanDependencies.InstallerNSIS
   $fanCompilerZip=Join-Path $fanCache ('InstallerNSIS-'+$fanDependency.version+'.zip')
-  if(-not (Test-Path -LiteralPath $fanCompilerZip)){Invoke-WebRequest -Uri $fanDependency.url -OutFile $fanCompilerZip}
+  if(-not (Test-Path -LiteralPath $fanCompilerZip)){
+    $fanCompilerDownload=$fanCompilerZip+'.download'
+    $fanCompilerResponse=Invoke-WebRequest -Uri $fanDependency.url -OutFile $fanCompilerDownload -PassThru -SessionVariable fanNsisSession
+    if($fanCompilerResponse.Headers['Content-Type'] -match 'text/html'){
+      # SourceForge may return a download page with a short-lived HTTPS link.
+      $fanDownloadPage=[IO.File]::ReadAllText($fanCompilerDownload)
+      $fanDownloadMatch=[regex]::Match($fanDownloadPage,'<meta http-equiv="refresh" content="[0-9]+; url=([^"]+)"')
+      if(-not $fanDownloadMatch.Success){throw 'The NSIS download page did not provide a supported HTTPS link.'}
+      $fanDownloadUri=[Uri]::new([Net.WebUtility]::HtmlDecode($fanDownloadMatch.Groups[1].Value))
+      $fanExpectedUri=[Uri]::new($fanDependency.url)
+      if($fanDownloadUri.Scheme -ne 'https' -or $fanDownloadUri.Host -ne $fanExpectedUri.Host -or $fanDownloadUri.AbsolutePath -ne $fanExpectedUri.AbsolutePath){throw 'Unexpected NSIS download redirect.'}
+      Invoke-WebRequest -Uri $fanDownloadUri -WebSession $fanNsisSession -OutFile $fanCompilerDownload
+    }
+    if((Get-FileHash -LiteralPath $fanCompilerDownload -Algorithm SHA256).Hash -ne $fanDependency.sha256){throw 'NSIS archive checksum mismatch.'}
+    Move-Item -LiteralPath $fanCompilerDownload -Destination $fanCompilerZip
+  }
   if((Get-FileHash -LiteralPath $fanCompilerZip -Algorithm SHA256).Hash -ne $fanDependency.sha256){throw 'NSIS archive checksum mismatch.'}
   Expand-Archive -LiteralPath $fanCompilerZip -DestinationPath $fanCache -Force
   $CompilerPath=Join-Path $fanCache ('nsis-'+$fanDependency.version+'\makensis.exe')
