@@ -33,7 +33,7 @@ namespace CinnaFanCon
             using(var current=Process.GetCurrentProcess())
             {
                 string args="--pipe "+name+" --token "+token+" --parent "+current.Id+" --parentticks "+current.StartTime.ToUniversalTime().Ticks+(demo?" --demo":"");
-                var info=new ProcessStartInfo(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"cinna-fanCon.Worker.exe"),args)
+                var info=new ProcessStartInfo(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"FanController.Worker.exe"),args)
                 {UseShellExecute=elevated,WorkingDirectory=AppDomain.CurrentDomain.BaseDirectory,WindowStyle=ProcessWindowStyle.Hidden};
                 if(elevated)info.Verb="runas";else info.CreateNoWindow=true;
                 try{process=Process.Start(info);}catch{expectedStop=true;server.Dispose();throw;}

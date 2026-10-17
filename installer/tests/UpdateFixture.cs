@@ -25,7 +25,7 @@ internal static class UpdateFixture
                 File.AppendAllText(log,"worker-restored\n");
                 return;
             }
-            using(var worker=Process.Start(new ProcessStartInfo(Path.Combine(root,"cinna-fanCon.exe"),"worker "+mutex){UseShellExecute=false,CreateNoWindow=true,WindowStyle=ProcessWindowStyle.Hidden}))
+            using(var worker=Process.Start(new ProcessStartInfo(Process.GetCurrentProcess().MainModule.FileName,"worker "+mutex){UseShellExecute=false,CreateNoWindow=true,WindowStyle=ProcessWindowStyle.Hidden}))
             using(var form=new Form {Text=args[2],ShowInTaskbar=false,Left=-30000,Top=-30000,StartPosition=FormStartPosition.Manual})
             using(var timer=new System.Windows.Forms.Timer {Interval=100})
             {

@@ -1,7 +1,7 @@
 param([switch]$Desktop)
 $ErrorActionPreference='Stop'
 $projectRoot=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-$app=Join-Path $projectRoot 'artifacts\app\cinna-fanCon.exe'
+$app=Join-Path $projectRoot 'artifacts\app\FanController.exe'
 $reports=Join-Path $projectRoot 'artifacts\tests'
 New-Item -ItemType Directory -Force -Path $reports | Out-Null
 $core=Join-Path $reports 'core-and-planner.txt'

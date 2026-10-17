@@ -45,7 +45,7 @@ namespace CinnaFanCon
                 Icon=BitmapFrame.Create(iconStream,BitmapCreateOptions.PreservePixelFormat,BitmapCacheOption.OnLoad);
                 Icon.Freeze();
             }
-            Title="cinna-fanCon · 风扇控制";Width=1280;Height=860;MinWidth=1040;MinHeight=740;
+            Title="FanController · 风扇控制";Width=1280;Height=860;MinWidth=1040;MinHeight=740;
             if(capture==null){var area=SystemParameters.WorkArea;Width=Math.Min(1280,area.Width-32);Height=Math.Min(860,area.Height-32);MinWidth=Math.Min(920,area.Width-16);MinHeight=Math.Min(660,area.Height-16);}
             WindowStyle=WindowStyle.None;ResizeMode=ResizeMode.CanResize;WindowStartupLocation=WindowStartupLocation.CenterScreen;
             Background=new SolidColorBrush(Color.FromRgb(10,13,20));
@@ -57,7 +57,7 @@ namespace CinnaFanCon
             if(capturePath==null)
             {
                 using(var iconStream=OpenAppIcon())trayIcon=new System.Drawing.Icon(iconStream,Forms.SystemInformation.SmallIconSize);
-                tray=new Forms.NotifyIcon {Icon=trayIcon,Text="cinna-fanCon · 风扇控制",Visible=true};
+                tray=new Forms.NotifyIcon {Icon=trayIcon,Text="FanController · 风扇控制",Visible=true};
                 var menu=new TrayContextMenu(
                     ()=>Dispatcher.BeginInvoke(new Action(Restore)),
                     ()=>{if(worker!=null)worker.Send(new WireMessage {Type="command",Id="tray-release",Action="release"});},
@@ -87,7 +87,7 @@ namespace CinnaFanCon
             try
             {
                 string ui=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"ui");
-                if(!File.Exists(Path.Combine(ui,"index.html")))throw new FileNotFoundException("界面文件缺失，请完整解压 cinna-fanCon 压缩包。");
+                if(!File.Exists(Path.Combine(ui,"index.html")))throw new FileNotFoundException("界面文件缺失，请完整解压 FanController 压缩包。");
                 string cache=capturePath==null?Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"cinna-fanCon","webview-v2"):Path.Combine(Environment.CurrentDirectory,"work","webview-v2-capture");
                 var environment=await CoreWebView2Environment.CreateAsync(null,cache);
                 await browser.EnsureCoreWebView2Async(environment);
@@ -116,7 +116,7 @@ namespace CinnaFanCon
             catch(Exception e)
             {
                 if(capturePath!=null){FailCapture(e);return;}
-                MessageBox.Show(this,"界面启动失败："+e.Message+"\n\n请确认已安装 Microsoft Edge WebView2 Runtime，并完整解压了应用文件。","cinna-fanCon",MessageBoxButton.OK,MessageBoxImage.Error);Close();
+                MessageBox.Show(this,"界面启动失败："+e.Message+"\n\n请确认已安装 Microsoft Edge WebView2 Runtime，并完整解压了应用文件。","FanController",MessageBoxButton.OK,MessageBoxImage.Error);Close();
             }
         }
         private static bool Trusted(string address)

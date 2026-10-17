@@ -6,8 +6,8 @@ Unicode true
 !include "x64.nsh"
 !include "FileFunc.nsh"
 
-Name "cinna-fanCon"
-BrandingText "cinna-fanCon"
+Name "FanController"
+BrandingText "FanController"
 OutFile "${OutputFile}"
 InstallDir "$LOCALAPPDATA\Programs\cinna-fanCon"
 RequestExecutionLevel user
@@ -16,18 +16,19 @@ CRCCheck force
 ShowInstDetails show
 ShowUninstDetails show
 VIProductVersion "${AppVersion}.0"
-VIAddVersionKey /LANG=1033 "ProductName" "cinna-fanCon"
-VIAddVersionKey /LANG=1033 "FileDescription" "cinna-fanCon Windows installer"
+VIAddVersionKey /LANG=1033 "ProductName" "FanController"
+VIAddVersionKey /LANG=1033 "FileDescription" "FanController Windows installer"
 VIAddVersionKey /LANG=1033 "FileVersion" "${AppVersion}"
-VIAddVersionKey /LANG=1033 "LegalCopyright" "cinna-fanCon contributors"
+VIAddVersionKey /LANG=1033 "LegalCopyright" "Cinna"
+VIAddVersionKey /LANG=1033 "CompanyName" "Cinna"
 
 !define UninstallKey "Software\Microsoft\Windows\CurrentVersion\Uninstall\cinna-fanCon"
 !define MUI_ICON "${ProjectRoot}\native\assets\app.ico"
 !define MUI_UNICON "${ProjectRoot}\native\assets\app.ico"
 !define MUI_ABORTWARNING
-!define MUI_WELCOMEPAGE_TITLE "cinna-fanCon ${AppVersion}"
+!define MUI_WELCOMEPAGE_TITLE "FanController ${AppVersion}"
 !define MUI_WELCOMEPAGE_TEXT "$(WelcomeText)"
-!define MUI_FINISHPAGE_RUN "$INSTDIR\cinna-fanCon.exe"
+!define MUI_FINISHPAGE_RUN "$INSTDIR\FanController.exe"
 !define MUI_FINISHPAGE_RUN_NOTCHECKED
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_COMPONENTS
@@ -38,16 +39,16 @@ VIAddVersionKey /LANG=1033 "LegalCopyright" "cinna-fanCon contributors"
 !insertmacro MUI_LANGUAGE "SimpChinese"
 !insertmacro MUI_LANGUAGE "English"
 
-LangString WelcomeText ${LANG_SIMPCHINESE} "安装 cinna-fanCon，为当前用户创建开始菜单入口和卸载程序。$\r$\n$\r$\n需要 Windows 10/11 x64 和 .NET Framework 4.8。缺少 WebView2 Runtime 时，安装程序会联网安装微软运行库。$\r$\n$\r$\n应用启动后不会自动接管风扇。主板访问权限在应用内设置。"
-LangString WelcomeText ${LANG_ENGLISH} "Install cinna-fanCon for the current user, with a Start menu shortcut and an uninstaller.$\r$\n$\r$\nRequires Windows 10/11 x64 and .NET Framework 4.8. If WebView2 Runtime is missing, setup installs it from Microsoft using an internet connection.$\r$\n$\r$\nThe app does not take control of fans on startup. Motherboard access is configured in the app."
-LangString AppSection ${LANG_SIMPCHINESE} "cinna-fanCon 应用（必选）"
-LangString AppSection ${LANG_ENGLISH} "cinna-fanCon application (required)"
+LangString WelcomeText ${LANG_SIMPCHINESE} "安装 FanController，为当前用户创建开始菜单入口和卸载程序。$\r$\n$\r$\n需要 Windows 10/11 x64 和 .NET Framework 4.8。缺少 WebView2 Runtime 时，安装程序会联网安装微软运行库。$\r$\n$\r$\n应用启动后不会自动接管风扇。主板访问权限在应用内设置。"
+LangString WelcomeText ${LANG_ENGLISH} "Install FanController for the current user, with a Start menu shortcut and an uninstaller.$\r$\n$\r$\nRequires Windows 10/11 x64 and .NET Framework 4.8. If WebView2 Runtime is missing, setup installs it from Microsoft using an internet connection.$\r$\n$\r$\nThe app does not take control of fans on startup. Motherboard access is configured in the app."
+LangString AppSection ${LANG_SIMPCHINESE} "FanController 应用（必选）"
+LangString AppSection ${LANG_ENGLISH} "FanController application (required)"
 LangString DesktopShortcut ${LANG_SIMPCHINESE} "桌面快捷方式"
 LangString DesktopShortcut ${LANG_ENGLISH} "Desktop shortcut"
-LangString AppRunning ${LANG_SIMPCHINESE} "请先从托盘退出 cinna-fanCon，等待风扇恢复后再安装或卸载。安装程序不会强制结束风扇服务。"
-LangString AppRunning ${LANG_ENGLISH} "Exit cinna-fanCon from the tray and wait for the fans to be restored before installing or uninstalling. Setup will not force the fan worker to stop."
-LangString CloseAppPrompt ${LANG_SIMPCHINESE} "cinna-fanCon 正在运行。$\r$\n$\r$\n点击“确定”后，安装程序会请求应用正常退出，等待风扇恢复和服务结束后继续安装。$\r$\n$\r$\n点击“取消”可停止安装，继续使用当前版本。"
-LangString CloseAppPrompt ${LANG_ENGLISH} "cinna-fanCon is running.$\r$\n$\r$\nClick OK to close the app normally. Setup will wait for fan restoration and the worker to exit before continuing.$\r$\n$\r$\nClick Cancel to stop setup and keep using the current version."
+LangString AppRunning ${LANG_SIMPCHINESE} "请先从托盘退出 FanController，等待风扇恢复后再安装或卸载。安装程序不会强制结束风扇服务。"
+LangString AppRunning ${LANG_ENGLISH} "Exit FanController from the tray and wait for the fans to be restored before installing or uninstalling. Setup will not force the fan worker to stop."
+LangString CloseAppPrompt ${LANG_SIMPCHINESE} "FanController 正在运行。$\r$\n$\r$\n点击“确定”后，安装程序会请求应用正常退出，等待风扇恢复和服务结束后继续安装。$\r$\n$\r$\n点击“取消”可停止安装，继续使用当前版本。"
+LangString CloseAppPrompt ${LANG_ENGLISH} "FanController is running.$\r$\n$\r$\nClick OK to close the app normally. Setup will wait for fan restoration and the worker to exit before continuing.$\r$\n$\r$\nClick Cancel to stop setup and keep using the current version."
 LangString ClosingApp ${LANG_SIMPCHINESE} "正在请求应用退出，等待风扇恢复和服务结束…"
 LangString ClosingApp ${LANG_ENGLISH} "Closing the app and waiting for fan restoration and the worker to exit..."
 LangString CloseAppFailed ${LANG_SIMPCHINESE} "应用或风扇服务未能正常退出，安装已停止。$\r$\n$\r$\n程序文件尚未修改。请查看应用中的风扇恢复提示；如果应用以管理员身份运行，请用相同权限运行安装程序后再试。"
@@ -69,7 +70,8 @@ Var SetupMutex
 Var RuntimeInstalled
 
 !define RunningMutex "Local\cinna-fanCon.Running"
-!define CurrentWindowTitle "cinna-fanCon · 风扇控制"
+!define CurrentWindowTitle "FanController · 风扇控制"
+!define PreviousWindowTitle "cinna-fanCon · 风扇控制"
 !define LegacyWindowTitle "cinna-fanCon · 智能散热"
 !include "${ProjectRoot}\installer\RunningApp.nsh"
 !insertmacro RunningCheck "un."
@@ -173,7 +175,12 @@ Section "$(AppSection)" Application
   ${EndIf}
   IfFileExists "$INSTDIR\Uninstall.exe" 0 no_upgrade
     ${If} $0 != $INSTDIR
-    ${OrIf} $2 != "cinna-fanCon"
+      MessageBox MB_OK|MB_ICONSTOP "$(InvalidLocation)" /SD IDOK
+      SetErrorLevel 11
+      Quit
+    ${EndIf}
+    ${If} $2 != "FanController"
+    ${AndIf} $2 != "cinna-fanCon"
       MessageBox MB_OK|MB_ICONSTOP "$(InvalidLocation)" /SD IDOK
       SetErrorLevel 11
       Quit
@@ -189,27 +196,27 @@ Section "$(AppSection)" Application
   SetOutPath "$INSTDIR"
   File /r "${Payload}\*"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
-  CreateDirectory "$SMPROGRAMS\cinna-fanCon"
-  CreateShortcut "$SMPROGRAMS\cinna-fanCon\cinna-fanCon.lnk" "$INSTDIR\cinna-fanCon.exe" "" "$INSTDIR\cinna-fanCon.exe" 0
-  CreateShortcut "$SMPROGRAMS\cinna-fanCon\卸载 cinna-fanCon.lnk" "$INSTDIR\Uninstall.exe" "" "$INSTDIR\Uninstall.exe" 0
-  WriteRegStr HKCU "${UninstallKey}" "DisplayName" "cinna-fanCon"
+  CreateDirectory "$SMPROGRAMS\FanController"
+  CreateShortcut "$SMPROGRAMS\FanController\FanController.lnk" "$INSTDIR\FanController.exe" "" "$INSTDIR\FanController.exe" 0
+  CreateShortcut "$SMPROGRAMS\FanController\卸载 FanController.lnk" "$INSTDIR\Uninstall.exe" "" "$INSTDIR\Uninstall.exe" 0
+  WriteRegStr HKCU "${UninstallKey}" "DisplayName" "FanController"
   WriteRegStr HKCU "${UninstallKey}" "DisplayVersion" "${AppVersion}"
-  WriteRegStr HKCU "${UninstallKey}" "Publisher" "icelemon233"
+  WriteRegStr HKCU "${UninstallKey}" "Publisher" "Cinna"
   WriteRegStr HKCU "${UninstallKey}" "InstallLocation" "$INSTDIR"
-  WriteRegStr HKCU "${UninstallKey}" "DisplayIcon" "$INSTDIR\cinna-fanCon.exe,0"
+  WriteRegStr HKCU "${UninstallKey}" "DisplayIcon" "$INSTDIR\FanController.exe,0"
   WriteRegStr HKCU "${UninstallKey}" "UninstallString" '$\"$INSTDIR\Uninstall.exe$\"'
   WriteRegStr HKCU "${UninstallKey}" "QuietUninstallString" '$\"$INSTDIR\Uninstall.exe$\" /S'
-  WriteRegStr HKCU "${UninstallKey}" "URLInfoAbout" "https://github.com/icelemon233/cinna-fanCon"
+  WriteRegStr HKCU "${UninstallKey}" "URLInfoAbout" "https://github.com/icelemon233/FanController"
   WriteRegDWORD HKCU "${UninstallKey}" "NoModify" 1
   WriteRegDWORD HKCU "${UninstallKey}" "NoRepair" 1
   WriteRegDWORD HKCU "${UninstallKey}" "EstimatedSize" ${InstalledSizeKB}
-  System::Call 'shell32::SHChangeNotify(i 0x00002000, i 0x0005, w "$INSTDIR\cinna-fanCon.exe", p 0)'
-  System::Call 'shell32::SHChangeNotify(i 0x00002000, i 0x0005, w "$SMPROGRAMS\cinna-fanCon\cinna-fanCon.lnk", p 0)'
+  System::Call 'shell32::SHChangeNotify(i 0x00002000, i 0x0005, w "$INSTDIR\FanController.exe", p 0)'
+  System::Call 'shell32::SHChangeNotify(i 0x00002000, i 0x0005, w "$SMPROGRAMS\FanController\FanController.lnk", p 0)'
 SectionEnd
 
 Section /o "$(DesktopShortcut)" Desktop
-  CreateShortcut "$DESKTOP\cinna-fanCon.lnk" "$INSTDIR\cinna-fanCon.exe" "" "$INSTDIR\cinna-fanCon.exe" 0
-  System::Call 'shell32::SHChangeNotify(i 0x00002000, i 0x0005, w "$DESKTOP\cinna-fanCon.lnk", p 0)'
+  CreateShortcut "$DESKTOP\FanController.lnk" "$INSTDIR\FanController.exe" "" "$INSTDIR\FanController.exe" 0
+  System::Call 'shell32::SHChangeNotify(i 0x00002000, i 0x0005, w "$DESKTOP\FanController.lnk", p 0)'
 SectionEnd
 
 Function un.onInit
@@ -235,10 +242,10 @@ Section "Uninstall"
   SetOutPath "$TEMP"
   !include "${RemovalList}"
   Delete "$INSTDIR\Uninstall.exe"
-  Delete "$DESKTOP\cinna-fanCon.lnk"
-  Delete "$SMPROGRAMS\cinna-fanCon\cinna-fanCon.lnk"
-  Delete "$SMPROGRAMS\cinna-fanCon\卸载 cinna-fanCon.lnk"
-  RMDir "$SMPROGRAMS\cinna-fanCon"
+  Delete "$DESKTOP\FanController.lnk"
+  Delete "$SMPROGRAMS\FanController\FanController.lnk"
+  Delete "$SMPROGRAMS\FanController\卸载 FanController.lnk"
+  RMDir "$SMPROGRAMS\FanController"
   DeleteRegKey HKCU "${UninstallKey}"
   RMDir "$INSTDIR"
 SectionEnd

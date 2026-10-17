@@ -212,7 +212,7 @@ export default function FanSettingsDrawer({
               type="info"
               showIcon
               title="应用后恢复原设置"
-              description="cinna-fanCon 将停止调节这组风扇。"
+              description="FanController 将停止调节这组风扇。"
             />
           )}
           <Form.Item label="参与方案默认选择" style={{ marginTop: 24 }}>

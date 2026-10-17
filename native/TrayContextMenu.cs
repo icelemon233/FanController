@@ -26,7 +26,7 @@ namespace CinnaFanCon
             ShowImageMargin=false;ShowCheckMargin=false;ShowItemToolTips=false;
             DropShadowEnabled=true;AutoSize=false;
             painter=new MenuRenderer(this);Renderer=painter;
-            Items.Add(CreateItem("打开 cinna-fanCon","tray-open",0,open));
+            Items.Add(CreateItem("打开 FanController","tray-open",0,open));
             Items.Add(CreateItem("恢复所有风扇原设置","tray-release",1,release));
             Items.Add(new ToolStripSeparator {AutoSize=false,Margin=Padding.Empty});
             Items.Add(CreateItem("恢复原设置并退出","tray-exit",2,exit));

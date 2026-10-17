@@ -1,13 +1,14 @@
-param([ValidateSet('Ready','Refuse','WrongPath','Silent','Idle')][string]$Scenario='Ready')
+param([ValidateSet('Ready','Refuse','WrongPath','Silent','Idle')][string]$Scenario='Ready',[switch]$Legacy)
 $ErrorActionPreference='Stop'
 $fanRoot=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $fanId=[Guid]::NewGuid().ToString('N')
 $fanFixture=Join-Path $fanRoot ('work\update-test-'+$fanId)
 New-Item -ItemType Directory -Path $fanFixture | Out-Null
-$fanMutex='Local\cinna-fanCon.UpdateTest.'+$fanId
-$fanTitle='cinna-fanCon update test '+$fanId
+$fanMutex='Local\FanController.UpdateTest.'+$fanId
+$fanTitle='FanController update test '+$fanId
 $fanCompiler=Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
-$fanMock=Join-Path $fanFixture 'cinna-fanCon.exe'
+$fanMock=Join-Path $fanFixture $(if($Legacy){'cinna-fanCon.exe'}else{'FanController.exe'})
+$fanRunningTitle=if($Legacy){$fanTitle+' previous'}else{$fanTitle}
 & $fanCompiler /nologo /target:winexe /platform:x64 /r:System.Windows.Forms.dll /r:System.Drawing.dll ('/out:'+$fanMock) (Join-Path $fanRoot 'installer\tests\UpdateFixture.cs')
 if($LASTEXITCODE -ne 0){throw 'Update fixture compilation failed.'}
 $fanMessages=Get-Content -LiteralPath (Join-Path $fanRoot 'installer\setup.nsi') | Where-Object {$_ -match '^LangString (CloseAppPrompt|ClosingApp|CloseAppFailed) '}
@@ -19,7 +20,7 @@ $fanApp=$null
 try {
   if($Scenario -ne 'Idle'){
     $fanMode=if($Scenario -eq 'Refuse'){'Refuse'}else{'Ready'}
-    $fanApp=Start-Process -FilePath $fanMock -ArgumentList @($fanMode,$fanMutex,('"'+$fanTitle+'"')) -WindowStyle Hidden -PassThru
+    $fanApp=Start-Process -FilePath $fanMock -ArgumentList @($fanMode,$fanMutex,('"'+$fanRunningTitle+'"')) -WindowStyle Hidden -PassThru
     $fanDeadline=[DateTime]::UtcNow.AddSeconds(10)
     while(-not (Test-Path -LiteralPath (Join-Path $fanFixture 'app-ready.txt')) -or -not (Test-Path -LiteralPath (Join-Path $fanFixture 'worker-ready.txt'))){
       if([DateTime]::UtcNow -gt $fanDeadline){throw 'Fake app or worker did not initialize.'}
@@ -45,7 +46,7 @@ try {
   $fanResult='PASS: '+$Scenario+'; isolated update guard preserved shutdown ordering and program files'
   $fanReports=Join-Path $fanRoot 'artifacts\tests'
   New-Item -ItemType Directory -Force -Path $fanReports | Out-Null
-  $fanResult | Set-Content -LiteralPath (Join-Path $fanReports ('installer-update-'+$Scenario+'.txt')) -Encoding utf8
+  $fanResult | Set-Content -LiteralPath (Join-Path $fanReports ('installer-update-'+$Scenario+$(if($Legacy){'-legacy'}else{''})+'.txt')) -Encoding utf8
   Write-Output $fanResult
 }finally{
   [IO.File]::WriteAllText((Join-Path $fanFixture 'cleanup.txt'),'cleanup')

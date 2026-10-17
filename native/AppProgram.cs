@@ -7,10 +7,13 @@ using System.Security.Principal;
 using System.Threading;
 using System.Windows;
 
-[assembly:AssemblyTitle("cinna-fanCon")]
+[assembly:AssemblyTitle("FanController")]
+[assembly:AssemblyProduct("FanController")]
+[assembly:AssemblyCompany("Cinna")]
+[assembly:AssemblyCopyright("Cinna")]
 [assembly:AssemblyDescription("Control supported CPU, case and GPU fans on Windows")]
-[assembly:AssemblyVersion("0.4.1.0")]
-[assembly:AssemblyFileVersion("0.4.1.0")]
+[assembly:AssemblyVersion("0.4.2.0")]
+[assembly:AssemblyFileVersion("0.4.2.0")]
 
 namespace CinnaFanCon
 {
@@ -41,7 +44,7 @@ namespace CinnaFanCon
                 {
                     bool entered=capture!=null;
                     if(!entered){try{entered=mutex.WaitOne(0);}catch(AbandonedMutexException){entered=true;}}
-                    if(!entered){MessageBox.Show("已有 cinna-fanCon 或旧版应用正在运行。请从托盘打开，或退出后再启动此版本。","cinna-fanCon");return 0;}
+                    if(!entered){MessageBox.Show("已有 FanController 或旧版应用正在运行。请从托盘打开，或退出后再启动此版本。","FanController");return 0;}
                     using(var installerGuard=new Mutex(false,@"Local\cinna-fanCon.Running"))
                     try
                     {
@@ -62,7 +65,7 @@ namespace CinnaFanCon
             {
                 if(capture!=null){File.WriteAllText(capture+".error.txt",error.ToString());return 1;}
                 if(args.Length>1&&args[0].StartsWith("--")&&args[0]!="--demo"){File.WriteAllText(args[1]+".error.txt",error.ToString());return 1;}
-                MessageBox.Show(error.Message,"cinna-fanCon · 启动失败",MessageBoxButton.OK,MessageBoxImage.Error);return 1;
+                MessageBox.Show(error.Message,"FanController · 启动失败",MessageBoxButton.OK,MessageBoxImage.Error);return 1;
             }
         }
     }

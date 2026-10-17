@@ -20,7 +20,7 @@ pwsh -File ./scripts/build-installer.ps1
 
 The bootstrapper's Microsoft download address can change its contents. A changed download fails the checksum check; verify Microsoft's signature before updating the recorded hash in `scripts/dependencies.json`.
 
-To test installation on a Windows account where cinna-fanCon is not already installed:
+To test installation on a Windows account where FanController is not already installed:
 
 ```powershell
 pwsh -File ./scripts/test-installer.ps1
@@ -62,7 +62,7 @@ Profiles are saved in `%LOCALAPPDATA%\cinna-fanCon\profiles.json`. If that file 
 
 微软下载地址上的安装器可能更新。文件变化后，校验会拒绝构建；确认微软签名后，再更新 `scripts/dependencies.json` 中的哈希。
 
-在尚未安装 cinna-fanCon 的 Windows 账户下，可运行 `pwsh -File ./scripts/test-installer.ps1`。测试会临时安装应用、运行桌面演示、重复安装以验证升级，再卸载；同时检查运行中拦截和安装清单外文件的保留。已有安装不会被修改，测试不控制真实风扇。缺少 WebView2 时的联网安装分支，需另用干净系统验证。
+在尚未安装 FanController 的 Windows 账户下，可运行 `pwsh -File ./scripts/test-installer.ps1`。测试会临时安装应用、运行桌面演示、重复安装以验证升级，再卸载；同时检查运行中拦截和安装清单外文件的保留。已有安装不会被修改，测试不控制真实风扇。缺少 WebView2 时的联网安装分支，需另用干净系统验证。
 
 构建安装包后，可运行 `pwsh -File ./scripts/test-installer-update.ps1 -Scenario Ready` 检查自动关闭旧版的顺序。此测试在临时目录创建模拟应用和服务，复用安装器的退出逻辑，确认两者均结束后才允许更新。`Refuse` 验证退出失败时停止，`WrongPath` 验证不会关闭其他目录的同名应用，`Silent` 验证静默安装仍会拦截运行中的应用，`Idle` 验证应用未运行时可继续。测试直接调用确认后的退出流程，不自动点击安装界面，也不改动现有安装。
 

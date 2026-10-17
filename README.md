@@ -1,20 +1,20 @@
-<p align="center"><img src="./docs/brand/cinna-app-icon.png" alt="cinna-fanCon Cinna icon" width="128"></p>
+<p align="center"><img src="./docs/brand/cinna-app-icon.png" alt="FanController icon" width="128"></p>
 
-<h1 align="center">cinna-fanCon</h1>
+<h1 align="center">FanController</h1>
 
 <p align="center">English · <a href="./README.zh-CN.md">简体中文</a></p>
 
 A Windows application that adjusts supported CPU, case and GPU fans by temperature. Build a quiet-first control plan, review each fan’s settings, then apply it. Temperature curves and fixed output remain editable per fan group.
 
-[Download the Windows installer](https://github.com/icelemon233/cinna-fanCon/releases/download/v0.4.1/cinna-fanCon-v0.4.1-windows-x64-setup.exe) · [Portable ZIP](https://github.com/icelemon233/cinna-fanCon/releases/tag/v0.4.1) · [Build from source](./docs/build.md)
+[Download the Windows installer](https://github.com/icelemon233/FanController/releases/download/v0.4.2/FanController-v0.4.2-windows-x64-setup.exe) · [Portable ZIP](https://github.com/icelemon233/FanController/releases/tag/v0.4.2) · [Build from source](./docs/build.md)
 
-<img src="./docs/images/overview.png" alt="cinna-fanCon overview in demo mode with simulated temperature and fan readings" width="960" />
+<img src="./docs/images/overview.png" alt="FanController overview in demo mode with simulated temperature and fan readings" width="960" />
 
 *Demo mode with simulated readings. The interface is currently in Simplified Chinese.*
 
 ## Use the app
 
-1. Run the Windows installer, then open **cinna-fanCon** from the Start menu. A desktop shortcut is optional.
+1. Run the Windows installer, then open **FanController** from the Start menu. A desktop shortcut is optional.
 2. Open **配置与预览** (Configure and preview). Confirm CPU and case fan roles against the actual wiring. Unidentified channels and pumps stay under their prior settings; GPU fans default to driver control.
 3. Edit each selected fan’s source, minimum output, curve and response smoothing. Click **预览应用内容** (Review changes) to see every channel and exact parameter, then **应用方案** (Apply plan).
 
@@ -30,7 +30,7 @@ Minimizing keeps the app running in the tray. The theme button switches between 
 
 The installer sets up the app for the current user and adds an entry in Windows Installed apps. During an interactive update, confirm the close prompt and setup will close the existing app normally, wait for fan restoration and the worker to exit, then continue. If shutdown fails, setup stops before changing program files. Silent installation and uninstall still require the app to be closed first. Uninstall removes packaged files and shortcuts; saved fan profiles remain. The installer is currently unsigned.
 
-For the portable edition, extract the complete ZIP and open `cinna-fanCon.exe`.
+For the portable edition, extract the complete ZIP and open `FanController.exe`.
 
 ## Hardware and requirements
 
@@ -55,3 +55,5 @@ See [build and test instructions](./docs/build.md) for source layout, profile st
 The [frontend architecture](./docs/frontend-architecture.md) describes module boundaries, native data validation, editor state and checks. The [design notes](./docs/design.md) describe the interface and visual checks.
 
 Third-party components retain their own licenses; see [third-party notices](./third-party/THIRD-PARTY-COMPONENTS.txt). The project's own code does not yet have a license.
+
+Developer: Cinna.

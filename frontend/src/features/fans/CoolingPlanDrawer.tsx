@@ -184,7 +184,7 @@ export default function CoolingPlanDrawer({
                     ) : (
                       <Text type="secondary">
                         {owned
-                          ? '停止 cinna-fanCon 调节，恢复接管前的设置。'
+                          ? '停止 FanController 调节，恢复接管前的设置。'
                           : '保留当前硬件设置，仅保存用途和排除状态。'}
                       </Text>
                     )}

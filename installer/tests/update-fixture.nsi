@@ -4,7 +4,7 @@ Unicode true
 !pragma warning disable 6010
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
-Name "cinna-fanCon update test"
+Name "FanController update test"
 OutFile "${FixtureRoot}\update-test.exe"
 InstallDir "${ExpectedRoot}"
 RequestExecutionLevel user
@@ -16,6 +16,7 @@ ShowInstDetails show
 !include "${FixtureRoot}\messages.nsh"
 !define RunningMutex "${FixtureMutex}"
 !define CurrentWindowTitle "${FixtureTitle}"
+!define PreviousWindowTitle "${FixtureTitle} previous"
 !define LegacyWindowTitle "${FixtureTitle} legacy"
 !define CloseWaitChecks 10
 !include "${ProjectRoot}\installer\RunningApp.nsh"

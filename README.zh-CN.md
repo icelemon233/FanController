@@ -1,20 +1,20 @@
-<p align="center"><img src="./docs/brand/cinna-app-icon.png" alt="cinna-fanCon Cinna icon" width="128"></p>
+<p align="center"><img src="./docs/brand/cinna-app-icon.png" alt="FanController icon" width="128"></p>
 
-<h1 align="center">cinna-fanCon</h1>
+<h1 align="center">FanController</h1>
 
 <p align="center"><a href="./README.md">English</a> · 简体中文</p>
 
 根据温度调节受支持的 CPU、机箱和显卡风扇的 Windows 应用。以日常安静为起点，逐组配置、核对参数后应用，也可以单独设置曲线或固定输出。
 
-[下载 Windows 安装程序](https://github.com/icelemon233/cinna-fanCon/releases/download/v0.4.1/cinna-fanCon-v0.4.1-windows-x64-setup.exe) · [便携 ZIP](https://github.com/icelemon233/cinna-fanCon/releases/tag/v0.4.1) · [从源码构建](./docs/build.md)
+[下载 Windows 安装程序](https://github.com/icelemon233/FanController/releases/download/v0.4.2/FanController-v0.4.2-windows-x64-setup.exe) · [便携 ZIP](https://github.com/icelemon233/FanController/releases/tag/v0.4.2) · [从源码构建](./docs/build.md)
 
-<img src="./docs/images/overview.png" alt="cinna-fanCon 散热概览，使用模拟温度和风扇读数" width="960" />
+<img src="./docs/images/overview.png" alt="FanController 散热概览，使用模拟温度和风扇读数" width="960" />
 
 *演示模式截图，读数均为模拟数据。目前界面为简体中文。*
 
 ## 使用
 
-1. 运行 Windows 安装程序，完成后从开始菜单打开 **cinna-fanCon**。安装时可选桌面快捷方式。
+1. 运行 Windows 安装程序，完成后从开始菜单打开 **FanController**。安装时可选桌面快捷方式。
 2. 打开“配置与预览”，按实际接线确认 CPU 和机箱风扇。未确认通道与水泵保留原设置，显卡默认由驱动调节。
 3. 逐组修改温度来源、最低输出、曲线和平滑时间。点击“预览应用内容”，核对每组通道与参数，再点击“应用方案”。
 
@@ -30,7 +30,7 @@
 
 安装程序为当前用户安装应用，并添加 Windows“已安装的应用”记录。更新时确认关闭提示后，安装程序会请求旧版正常退出，等待风扇恢复和服务结束后继续安装。退出失败时会停止，程序文件不会被修改。静默安装和卸载仍需先退出应用。卸载会删除安装的程序文件和快捷方式，保留已保存的风扇配置。安装包目前尚未代码签名。
 
-使用便携版时，完整解压 ZIP 后打开 `cinna-fanCon.exe`。
+使用便携版时，完整解压 ZIP 后打开 `FanController.exe`。
 
 ## 硬件与运行环境
 
@@ -55,3 +55,5 @@ AMD 显卡使用已安装驱动的 [ADLX 接口](https://github.com/GPUOpen-Libr
 模块边界、原生数据校验、编辑状态及检查命令见[前端架构说明](./docs/frontend-architecture.md)，界面和视觉检查见[设计记录](./docs/design.md)。
 
 第三方组件使用各自的许可证，见[依赖说明](./third-party/THIRD-PARTY-COMPONENTS.txt)。项目自身代码暂未指定许可证。
+
+开发者：Cinna。

@@ -2,10 +2,10 @@ param([switch]$KeepInstalled)
 $ErrorActionPreference='Stop'
 $fanRoot=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $fanMetadata=Get-Content -LiteralPath (Join-Path $fanRoot 'version.json') -Raw | ConvertFrom-Json
-$fanInstaller=Join-Path $fanRoot ('dist\cinna-fanCon-v'+$fanMetadata.version+'-windows-x64-setup.exe')
+$fanInstaller=Join-Path $fanRoot ('dist\FanController-v'+$fanMetadata.version+'-windows-x64-setup.exe')
 $fanInstallRoot=Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Programs\cinna-fanCon'
 $fanRegistry='HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\cinna-fanCon'
-if((Test-Path -LiteralPath $fanRegistry) -or (Test-Path -LiteralPath $fanInstallRoot)){throw 'Installer tests require cinna-fanCon to be uninstalled first. Existing installations are left untouched.'}
+if((Test-Path -LiteralPath $fanRegistry) -or (Test-Path -LiteralPath $fanInstallRoot)){throw 'Installer tests require FanController to be uninstalled first. Existing installations are left untouched.'}
 $fanReports=Join-Path $fanRoot 'artifacts\tests'
 New-Item -ItemType Directory -Force -Path $fanReports | Out-Null
 $fanResults=[Collections.Generic.List[string]]::new()
@@ -20,22 +20,22 @@ function Test-FanInstalling {
 $fanGuard=[Threading.Mutex]::new($false,'Local\cinna-fanCon.Running')
 try {if((Invoke-FanSetup) -ne 10){throw 'Setup did not block while the fan worker guard was active.'}}
 finally {$fanGuard.Dispose()}
-if(Test-Path -LiteralPath (Join-Path $fanInstallRoot 'cinna-fanCon.exe')){throw 'Blocked setup still installed files.'}
+if(Test-Path -LiteralPath (Join-Path $fanInstallRoot 'FanController.exe')){throw 'Blocked setup still installed files.'}
 $fanResults.Add('PASS: setup refuses installation while fan control is running')
 $fanGuard=[Threading.Mutex]::new($false,'Local\cinna-fanCon.Installing')
 try {
   $fanBlockedImage=Join-Path $fanReports 'blocked-startup.png'
-  $fanProcess=Start-Process -FilePath (Join-Path $fanRoot 'artifacts\app\cinna-fanCon.exe') -ArgumentList @('--capture',('"'+$fanBlockedImage+'"'),'--demo') -WindowStyle Hidden -PassThru -Wait
+  $fanProcess=Start-Process -FilePath (Join-Path $fanRoot 'artifacts\app\FanController.exe') -ArgumentList @('--capture',('"'+$fanBlockedImage+'"'),'--demo') -WindowStyle Hidden -PassThru -Wait
   if($fanProcess.ExitCode -ne 1 -or -not ([IO.File]::ReadAllText($fanBlockedImage+'.error.txt').Contains('安装或卸载正在进行'))){throw 'App startup did not block during installation.'}
 } finally {$fanGuard.Dispose()}
 $fanResults.Add('PASS: application startup is blocked during installation or uninstallation')
 if((Invoke-FanSetup) -ne 0){throw 'Per-user installation failed.'}
 $fanRegistration=Get-ItemProperty -LiteralPath $fanRegistry
 if($fanRegistration.DisplayVersion -ne $fanMetadata.version -or $fanRegistration.InstallLocation -ne $fanInstallRoot){throw 'Installation registration is incorrect.'}
-$fanShortcut=Join-Path ([Environment]::GetFolderPath('Programs')) 'cinna-fanCon\cinna-fanCon.lnk'
+$fanShortcut=Join-Path ([Environment]::GetFolderPath('Programs')) 'FanController\FanController.lnk'
 if(-not (Test-Path -LiteralPath $fanShortcut)){throw 'Start menu shortcut is missing.'}
 $fanResults.Add('PASS: per-user install registers the app and creates its Start menu shortcut')
-$fanApp=Join-Path $fanInstallRoot 'cinna-fanCon.exe'
+$fanApp=Join-Path $fanInstallRoot 'FanController.exe'
 $fanDesktopReport=Join-Path $fanReports 'installed-desktop.txt'
 $fanDesktopImage=Join-Path $fanReports 'installed-desktop.png'
 $fanProcess=Start-Process -FilePath $fanApp -ArgumentList @('--smoke',('"'+$fanDesktopReport+'"'),('"'+$fanDesktopImage+'"')) -WindowStyle Hidden -PassThru -Wait

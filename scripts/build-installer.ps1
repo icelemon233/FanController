@@ -34,7 +34,7 @@ if(-not (Test-Path -LiteralPath $fanBootstrapper)){Invoke-WebRequest -Uri $fanDe
 if((Get-FileHash -LiteralPath $fanBootstrapper -Algorithm SHA256).Hash -ne $fanDependencies.WebView2Bootstrapper.sha256){throw 'WebView2 bootstrapper checksum mismatch; verify the current Microsoft download before updating dependencies.json.'}
 $fanSignature=Get-AuthenticodeSignature -LiteralPath $fanBootstrapper
 if($fanSignature.Status -ne 'Valid' -or $fanSignature.SignerCertificate.Subject -notmatch 'Microsoft Corporation'){throw 'WebView2 bootstrapper signature verification failed.'}
-$fanApp=Join-Path $fanRoot 'artifacts\app\cinna-fanCon.exe'
+$fanApp=Join-Path $fanRoot 'artifacts\app\FanController.exe'
 if((Get-Item -LiteralPath $fanApp).VersionInfo.FileVersion -ne ($fanMetadata.version+'.0')){throw 'Build the app at the current version before creating the installer.'}
 $fanArchive=& (Join-Path $PSScriptRoot 'package.ps1')
 $fanStage=Join-Path $fanRoot ('work\installer-'+[Guid]::NewGuid().ToString('N'))
@@ -54,7 +54,7 @@ foreach($fanDirectory in (Get-ChildItem -LiteralPath $fanStage -Directory -Recur
 }
 $fanRemovalFile=Join-Path $fanRoot ('work\installer-removal-'+[Guid]::NewGuid().ToString('N')+'.nsh')
 [IO.File]::WriteAllLines($fanRemovalFile,$fanRemoval,[Text.UTF8Encoding]::new($false))
-$fanOutput=Join-Path $fanRoot ('dist\cinna-fanCon-v'+$fanMetadata.version+'-windows-x64-setup.exe')
+$fanOutput=Join-Path $fanRoot ('dist\FanController-v'+$fanMetadata.version+'-windows-x64-setup.exe')
 $fanArguments=@('/V2','/INPUTCHARSET','UTF8',('/DProjectRoot='+$fanRoot),('/DAppVersion='+$fanMetadata.version),('/DPayload='+$fanStage),('/DBootstrapper='+$fanBootstrapper),('/DRemovalList='+$fanRemovalFile),('/DInstalledSizeKB='+[Math]::Ceiling($fanSize/1024)),('/DOutputFile='+$fanOutput),(Join-Path $fanRoot 'installer\setup.nsi'))
 & $CompilerPath @fanArguments
 if($LASTEXITCODE -ne 0){throw 'NSIS installer compilation failed.'}

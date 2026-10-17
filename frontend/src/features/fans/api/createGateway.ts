@@ -15,6 +15,6 @@ export function createGatewayFactory(
       const { createDemoGateway } = await import('./demoGateway.ts');
       return createDemoGateway();
     }
-    throw new Error('未检测到 Windows 原生桥接。请从 cinna-fanCon 桌面应用打开此界面。');
+    throw new Error('未检测到 Windows 原生桥接。请从 FanController 桌面应用打开此界面。');
   };
 }

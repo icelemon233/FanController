@@ -1,5 +1,9 @@
 !include "LogicLib.nsh"
 
+!ifndef PreviousWindowTitle
+  !define PreviousWindowTitle ""
+!endif
+
 Var AppIsRunning
 Var AppWindow
 Var ClosingProcess
@@ -25,6 +29,11 @@ Function ${Prefix}CheckRunning
     ${EndIf}
   ${EndIf}
   FindWindow $AppWindow "" "${CurrentWindowTitle}"
+  ${If} $AppWindow = 0
+    ${If} "${PreviousWindowTitle}" != ""
+      FindWindow $AppWindow "" "${PreviousWindowTitle}"
+    ${EndIf}
+  ${EndIf}
   ${If} $AppWindow = 0
     FindWindow $AppWindow "" "${LegacyWindowTitle}"
   ${EndIf}
@@ -83,9 +92,12 @@ Function CloseRunningApp
     ${If} $2 = 0
       Goto close_failed
     ${EndIf}
-    GetFullPathName $2 "$INSTDIR\cinna-fanCon.exe"
+    GetFullPathName $2 "$INSTDIR\FanController.exe"
     ${If} $1 != $2
-      Goto close_failed
+      GetFullPathName $2 "$INSTDIR\cinna-fanCon.exe"
+      ${If} $1 != $2
+        Goto close_failed
+      ${EndIf}
     ${EndIf}
     DetailPrint "$(ClosingApp)"
     ; WM_CLOSE goes through the app's existing fan-restoration path. Never

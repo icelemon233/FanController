@@ -96,7 +96,7 @@ export default function AppShell({
             </div>
             <div>
               <Text strong className="brand-name">
-                cinna-fanCon
+                FanController
               </Text>
               <Text type="secondary" className="brand-caption">
                 Windows 风扇控制
@@ -145,7 +145,7 @@ export default function AppShell({
       <Layout style={{ minWidth: 0, background: 'var(--fd-layout)' }}>
         <Layout.Header className="app-header" data-window-drag>
           <Space size={10}>
-            <Text type="secondary">cinna-fanCon</Text>
+            <Text type="secondary">FanController</Text>
             <Text strong>{page === 'home' ? '散热概览' : '风扇设置'}</Text>
           </Space>
           <Space size={12}>
