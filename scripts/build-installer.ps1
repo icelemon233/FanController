@@ -31,7 +31,8 @@ if(-not $CompilerPath){
 if(-not (Test-Path -LiteralPath $CompilerPath)){throw 'NSIS makensis.exe was not found.'}
 $fanBootstrapper=Join-Path $fanCache 'MicrosoftEdgeWebview2Setup.exe'
 if(-not (Test-Path -LiteralPath $fanBootstrapper)){Invoke-WebRequest -Uri $fanDependencies.WebView2Bootstrapper.url -OutFile $fanBootstrapper}
-if((Get-FileHash -LiteralPath $fanBootstrapper -Algorithm SHA256).Hash -ne $fanDependencies.WebView2Bootstrapper.sha256){throw 'WebView2 bootstrapper checksum mismatch; verify the current Microsoft download before updating dependencies.json.'}
+$fanBootstrapperHash=(Get-FileHash -LiteralPath $fanBootstrapper -Algorithm SHA256).Hash
+if($fanBootstrapperHash -ne $fanDependencies.WebView2Bootstrapper.sha256){throw ('WebView2 bootstrapper checksum mismatch ('+$fanBootstrapperHash+'); verify the current Microsoft download before updating dependencies.json.')}
 $fanSignature=Get-AuthenticodeSignature -LiteralPath $fanBootstrapper
 if($fanSignature.Status -ne 'Valid' -or $fanSignature.SignerCertificate.Subject -notmatch 'Microsoft Corporation'){throw 'WebView2 bootstrapper signature verification failed.'}
 $fanApp=Join-Path $fanRoot 'artifacts\app\FanController.exe'
