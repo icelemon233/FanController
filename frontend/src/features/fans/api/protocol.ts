@@ -113,6 +113,9 @@ export function parseHostEvent(value: unknown): FanEvent | Reply | undefined {
     }
     return parsed;
   }
+  if (value.Type === 'service-error' && text(value.Message)) {
+    return { Type: 'service-error', Message: String(value.Message) };
+  }
   if (value.Type === 'notice' && text(value.Message) && flag(value.Success)) {
     return { Type: 'notice', Message: String(value.Message), Success: Boolean(value.Success) };
   }

@@ -33,6 +33,13 @@ namespace CinnaFanCon
         public static string Run()
         {
             var passed=new List<string>();
+            Assert(!HardwareBackend.CreateMonitor(new[]{@"PCI\VEN_1002&DEV_TEST"},true).IsGpuEnabled,"AMD ADLX must not also open legacy ADL");
+            Assert(!HardwareBackend.CreateMonitor(new[]{@"PCI\VEN_1002&DEV_TEST"},false).IsGpuEnabled,"AMD without ADLX must not fall back to legacy ADL");
+            Assert(!HardwareBackend.CreateMonitor(new[]{@"PCI\VEN_10DE&DEV_TEST",@"PCI\VEN_1002&DEV_TEST"},false).IsGpuEnabled,"hybrid AMD systems must not initialize legacy ADL");
+            Assert(!HardwareBackend.CreateMonitor(null,false).IsGpuEnabled,"unknown GPU identity fails closed");
+            Assert(HardwareBackend.CreateMonitor(new[]{@"PCI\VEN_10DE&DEV_TEST"},false).IsGpuEnabled,"NVIDIA-only monitoring remains enabled");
+            Assert(HardwareBackend.CreateMonitor(new[]{@"PCI\VEN_8086&DEV_TEST"},false).IsCpuEnabled,"CPU monitoring remains enabled independently of GPU selection");
+            passed.Add("AMD ADLX isolation, no legacy ADL fallback, hybrid and unknown adapters, NVIDIA and CPU monitoring");
             var profile=new FanProfile { Id="fake",Mode=FanMode.Curve,Source="group/cpu" };
             Assert(profile.Validate()==null,"default profile valid");
             Assert(Math.Abs(profile.Evaluate(52.5)-47.5)<0.001,"piecewise linear interpolation");

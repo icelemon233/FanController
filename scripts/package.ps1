@@ -4,6 +4,7 @@ $metadata=Get-Content -LiteralPath (Join-Path $projectRoot 'version.json') -Raw 
 $output=Join-Path $projectRoot 'artifacts\app'
 if(-not (Test-Path -LiteralPath (Join-Path $output 'FanController.exe'))){throw 'Build the app before packaging.'}
 if((Get-Item -LiteralPath (Join-Path $output 'FanController.exe')).VersionInfo.FileVersion -ne ($metadata.version+'.0')){throw 'The compiled app version differs from version.json.'}
+if((Get-Item -LiteralPath (Join-Path $output 'FanController.Worker.exe')).VersionInfo.FileVersion -ne ($metadata.version+'.0')){throw 'The compiled worker version differs from version.json.'}
 $frontendMetadata=Get-Content -LiteralPath (Join-Path $projectRoot 'frontend\dist\build-info.json') -Raw | ConvertFrom-Json
 if($frontendMetadata.target -ne 'native' -or $frontendMetadata.version -ne $metadata.version){throw 'Packaging requires a native frontend build at the current app version.'}
 $fanIconHash=(Get-FileHash -LiteralPath (Join-Path $projectRoot 'docs\brand\cinna-app-icon.png') -Algorithm SHA256).Hash.ToLowerInvariant()

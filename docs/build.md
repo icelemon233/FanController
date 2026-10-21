@@ -56,6 +56,8 @@ Profiles are saved in `%LOCALAPPDATA%\cinna-fanCon\profiles.json`. If that file 
 
 `test.ps1` 使用模拟风扇检查控制逻辑。加上 `-Desktop` 后，还会在 WebView2 中运行演示界面，通过原生服务检查模式切换、恢复、单组排除和主题切换。两种测试均不访问真实硬件，报告位于 `artifacts/tests`。桌面测试需要 WebView2 Runtime。
 
+`test-worker-connection.ps1` 在临时目录使用模拟服务检查异常退出、管道结束、启动失败、没有新读数及拒绝退出。正常关闭不会误报崩溃；断连会清除原生缓存，握手或旧快照不能冒充新读数。模拟服务拒绝退出时，测试确认它仍在运行，不会被强制结束。
+
 `package.ps1` 将便携 ZIP 和 SHA-256 文件写入 `dist`。PawnIO 安装器不随 ZIP 分发，应用会在主板设置需要时从官方发布地址下载固定版本。
 
 `build-installer.ps1` 校验并解压固定版本的 NSIS 编译器，无需在系统中安装编译器。生成的安装 EXE 支持当前用户安装、开始菜单入口及卸载，默认勾选桌面快捷方式和安装后打开，用户可取消。启动应用前会释放安装互斥锁。文件和 SHA-256 位于 `dist`。随安装包附带的 WebView2 引导安装器会校验 SHA-256 和微软数字签名，仅在缺少运行库时使用。

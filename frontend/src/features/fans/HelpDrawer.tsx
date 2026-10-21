@@ -35,6 +35,9 @@ export default function HelpDrawer({ open, onClose }: { open: boolean; onClose: 
           关闭或最小化窗口后，应用会继续在托盘调节风扇。双击托盘图标可打开窗口；右键选择“恢复原设置并退出”可结束运行。
         </Paragraph>
         <Paragraph type="secondary">
+          读数停止时，点击“重新连接”检查风扇服务。需要重启时会先等旧服务退出，再等待新读数；已保存配置会保留，连接后请核对风扇状态再应用。
+        </Paragraph>
+        <Paragraph type="secondary">
           退出时会尝试恢复已接管风扇的原设置，恢复失败时应用会保持运行。与应用断开连接后，风扇服务也会尝试恢复；强制结束服务、驱动故障或断电可能导致无法恢复。
         </Paragraph>
       </Flex>

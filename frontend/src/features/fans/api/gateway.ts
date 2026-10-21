@@ -1,7 +1,7 @@
 import type { CoolingMode, FanProfile, Reply, Snapshot } from '../model.ts';
 
 export type FanCommand =
-  | { Action: 'ready' }
+  | { Action: 'ready' | 'reconnect' }
   | { Action: 'release' | 'rescan' | 'enableMotherboard' }
   | { Action: 'smart'; Mode: CoolingMode }
   | { Action: 'plan'; Profiles: FanProfile[] }
@@ -10,6 +10,7 @@ export type FanCommand =
 export type FanEvent =
   | Snapshot
   | { Type: 'notice'; Message: string; Success: boolean }
+  | { Type: 'service-error'; Message: string }
   | { Type: 'protocol-error'; Message: string };
 
 export interface FanGateway {

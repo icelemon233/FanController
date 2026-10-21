@@ -162,8 +162,11 @@ export default function AppShell({
                 <Text type="secondary">
                   {connected
                     ? '每秒更新'
-                    : state.connection.kind === 'connecting'
-                      ? '正在检测'
+                    : state.connection.kind === 'connecting' ||
+                        state.connection.kind === 'reconnecting'
+                      ? state.connection.kind === 'reconnecting'
+                        ? '正在重新连接'
+                        : '正在检测'
                       : '读数已暂停'}
                 </Text>
               }

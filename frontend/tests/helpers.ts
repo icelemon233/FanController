@@ -73,6 +73,7 @@ export class FakeGateway implements FanGateway {
   requests: FanCommand[] = [];
   waiting: { resolve: (value: Reply) => void; reject: (error: Error) => void }[] = [];
   disposed = false;
+  autoReconnect = true;
   subscribe(listener: (event: FanEvent) => void) {
     this.listeners.add(listener);
     return () => {
@@ -81,7 +82,8 @@ export class FakeGateway implements FanGateway {
   }
   request(command: FanCommand) {
     this.requests.push(command);
-    if (command.Action === 'ready') return Promise.resolve(reply());
+    if (command.Action === 'ready' || (command.Action === 'reconnect' && this.autoReconnect))
+      return Promise.resolve(reply());
     return new Promise<Reply>((resolve, reject) => {
       this.waiting.push({ resolve, reject });
     });

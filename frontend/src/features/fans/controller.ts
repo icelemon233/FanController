@@ -11,9 +11,9 @@ import {
   validateProfile,
 } from './model.ts';
 
-export type FanOperation = Exclude<FanCommand['Action'], 'ready'>;
+export type FanOperation = Exclude<FanCommand['Action'], 'ready' | 'reconnect'>;
 export type ConnectionState =
-  | { kind: 'connecting' | 'ready' | 'stale' }
+  | { kind: 'connecting' | 'reconnecting' | 'ready' | 'stale' }
   | { kind: 'failed'; message: string };
 export interface FanState {
   connection: ConnectionState;
@@ -46,6 +46,7 @@ export function createFanController(
   let unsubscribe: (() => void) | undefined;
   let monitor: unknown;
   let lastReceived = 0;
+  let reconnectTask: Promise<void> | undefined;
   const listeners = new Set<() => void>();
   const feedback = new Set<(event: Feedback) => void>();
   const update = (patch: Partial<FanState>) => {
@@ -82,7 +83,7 @@ export function createFanController(
           : state.history,
       });
       synchronizeMode();
-    } else if (event.Type === 'protocol-error')
+    } else if (event.Type === 'protocol-error' || event.Type === 'service-error')
       update({ connection: { kind: 'failed', message: event.Message } });
     else report({ type: event.Success ? 'info' : 'error', message: event.Message, notice: true });
   };
@@ -94,14 +95,15 @@ export function createFanController(
     unsubscribe = undefined;
     gateway?.dispose();
     gateway = undefined;
+    reconnectTask = undefined;
     update({ busy: null, connection: { kind: 'connecting' } });
   };
-  const start = async () => {
+  const start = async (handshake: 'ready' | 'reconnect' = 'ready') => {
     if (running) return;
     running = true;
     const current = ++generation;
     lastReceived = scheduler.now();
-    update({ connection: { kind: 'connecting' } });
+    update({ connection: { kind: handshake === 'reconnect' ? 'reconnecting' : 'connecting' } });
     try {
       const client = await createGateway();
       if (!running || current !== generation) {
@@ -117,14 +119,15 @@ export function createFanController(
         if (
           scheduler.now() - lastReceived > 6000 &&
           state.connection.kind !== 'failed' &&
-          state.connection.kind !== 'stale'
+          state.connection.kind !== 'stale' &&
+          state.connection.kind !== 'reconnecting'
         )
           update({ connection: { kind: 'stale' } });
         monitor = scheduler.after(tick, 1000);
       };
       monitor = scheduler.after(tick, 1000);
       if (loaded.issue) report({ type: 'warning', message: loaded.issue });
-      const reply = await client.request({ Action: 'ready' });
+      const reply = await client.request({ Action: handshake });
       if (!reply.Success) throw new Error(reply.Message || '风扇服务尚未就绪，请重新连接。');
     } catch (error) {
       if (!running || current !== generation) return;
@@ -136,7 +139,9 @@ export function createFanController(
       });
     }
   };
-  const run = async (command: Exclude<FanCommand, { Action: 'ready' }>): Promise<boolean> => {
+  const run = async (
+    command: Exclude<FanCommand, { Action: 'ready' | 'reconnect' }>,
+  ): Promise<boolean> => {
     if (state.busy || state.connection.kind !== 'ready' || !gateway) return false;
     const current = generation;
     update({ busy: command.Action });
@@ -180,8 +185,13 @@ export function createFanController(
     start,
     stop,
     reconnect() {
+      if (reconnectTask) return reconnectTask;
       stop();
-      return start();
+      const task = start('reconnect').finally(() => {
+        if (reconnectTask === task) reconnectTask = undefined;
+      });
+      reconnectTask = task;
+      return task;
     },
     selectMode(mode: CoolingMode) {
       if (state.busy || state.connection.kind !== 'ready') return Promise.resolve(false);

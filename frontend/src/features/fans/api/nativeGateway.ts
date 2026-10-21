@@ -31,7 +31,16 @@ export function createNativeGateway(
           pending.delete(event.Id);
           request.resolve(event);
         }
-      } else publish(event);
+      } else {
+        publish(event);
+        if (event.Type === 'service-error') {
+          for (const request of pending.values()) {
+            scheduler.cancel(request.timer);
+            request.reject(new Error(event.Message));
+          }
+          pending.clear();
+        }
+      }
     } catch {
       publish({ Type: 'protocol-error', Message: protocolErrorMessage });
     }
@@ -53,7 +62,7 @@ export function createNativeGateway(
             pending.delete(Id);
             reject(new Error('尚未收到操作结果，请查看风扇状态后再试'));
           },
-          command.Action === 'enableMotherboard' ? 180000 : 20000,
+          command.Action === 'enableMotherboard' || command.Action === 'reconnect' ? 180000 : 20000,
         );
         pending.set(Id, { resolve, reject, timer });
         try {

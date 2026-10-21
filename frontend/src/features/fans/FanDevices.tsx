@@ -32,6 +32,7 @@ export default function FanDevices() {
   const openChannel = (channel: Channel) =>
     setEditor({ id: channel.Id, session: ++sequence.current });
   const selected = channels.find((channel) => channel.Id === editor?.id);
+  const stale = state.connection.kind !== 'ready';
   const closeEditor = () => setEditor(null);
   const apply = async (profile: FanProfile) => {
     const session = editor?.session;
@@ -69,16 +70,18 @@ export default function FanDevices() {
               render: (_, c) => (
                 <Tag
                   color={
-                    c.Error
-                      ? 'red'
-                      : c.Status.includes('保护')
-                        ? 'orange'
-                        : c.Owned
-                          ? 'blue'
-                          : 'default'
+                    stale
+                      ? 'default'
+                      : c.Error
+                        ? 'red'
+                        : c.Status.includes('保护')
+                          ? 'orange'
+                          : c.Owned
+                            ? 'blue'
+                            : 'default'
                   }
                 >
-                  {c.Error ? '控制异常' : c.Owned ? c.Status : '未接管'}
+                  {stale ? '状态未确认' : c.Error ? '控制异常' : c.Owned ? c.Status : '未接管'}
                 </Tag>
               ),
             },
@@ -86,9 +89,9 @@ export default function FanDevices() {
               title: '转速',
               key: 'rpm',
               render: (_, c) => {
-                const v = rpmFor(c, snapshot);
+                const v = stale ? null : rpmFor(c, snapshot);
                 return v === null ? (
-                  <Text type="secondary">暂无读数</Text>
+                  <Text type="secondary">{stale ? '读数已过期' : '暂无读数'}</Text>
                 ) : (
                   <Text>{Math.round(v).toLocaleString()} RPM</Text>
                 );
@@ -164,7 +167,7 @@ export default function FanDevices() {
                     { title: '名称', dataIndex: 'Name' },
                     { title: '设备', dataIndex: 'Device', ellipsis: true },
                     {
-                      title: '当前读数',
+                      title: stale ? '上次读数（已过期）' : '当前读数',
                       key: 'value',
                       render: (_, s) =>
                         s.Value === null

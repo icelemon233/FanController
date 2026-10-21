@@ -6,7 +6,7 @@
 
 根据温度调节受支持的 CPU、机箱和显卡风扇的 Windows 应用。以日常安静为起点，逐组配置、核对参数后应用，也可以单独设置曲线或固定输出。
 
-[下载 Windows 安装程序](https://github.com/icelemon233/FanController/releases/download/v0.4.4/FanController-v0.4.4-windows-x64-setup.exe) · [便携 ZIP](https://github.com/icelemon233/FanController/releases/tag/v0.4.4) · [从源码构建](./docs/build.md)
+[下载 Windows 安装程序](https://github.com/icelemon233/FanController/releases/download/v0.4.5/FanController-v0.4.5-windows-x64-setup.exe) · [便携 ZIP](https://github.com/icelemon233/FanController/releases/tag/v0.4.5) · [从源码构建](./docs/build.md)
 
 <img src="./docs/images/overview.png" alt="FanController 散热概览，使用模拟温度和风扇读数" width="960" />
 
@@ -40,7 +40,9 @@
 
 读取 CPU 温度和控制主板风扇前，可点击“启用主板访问”。应用通过 [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) 和 [PawnIO](https://pawnio.eu/) 访问主板。未安装 PawnIO 时，设置流程会从官方发布地址下载签名安装器并检查 SHA-256。完成安装和 Windows 授权后，界面会重新连接风扇服务，检测受支持的接口。
 
-AMD 显卡使用已安装驱动的 [ADLX 接口](https://github.com/GPUOpen-LibrariesAndSDKs/ADLX) 调速，NVIDIA 接口由 LibreHardwareMonitor 检测。可用功能取决于硬件和驱动。专用 USB 风扇控制器及 Intel 显卡调速尚未验证。
+AMD 显卡的温度、转速和调速统一使用已安装驱动的 [ADLX 接口](https://github.com/GPUOpen-LibrariesAndSDKs/ADLX)，停用可能导致服务崩溃的旧版 ADL 监测。没有 AMD 显卡时，NVIDIA 接口由 LibreHardwareMonitor 检测。同时使用 AMD 与其他显卡的机器，当前仅监测 AMD 显卡；CPU 和主板监测照常。可用功能取决于硬件和驱动。专用 USB 风扇控制器及 Intel 显卡调速尚未验证。
+
+读数停止时，点击“重新连接”会检查服务，在需要重启时先等待旧服务正常退出，再等待新读数。界面会显示连接进度与失败原因。已保存配置会保留，连接后不会自动重新应用。服务异常退出前的恢复结果无法确认，请核对风扇状态后再应用设置。
 
 当前预览版已通过模拟风扇控制和桌面交互测试，尚未验证真实硬件的调速写入。接在同一控制接口上的风扇无法分别调节，使用前请核对硬件的 PWM/DC 模式与转速反馈。
 

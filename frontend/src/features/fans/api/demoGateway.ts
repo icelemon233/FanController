@@ -62,6 +62,7 @@ export function createDemoGateway(scheduler: Scheduler = systemScheduler): FanGa
     const reply: Reply = { Type: 'reply', Id: 'demo', Success: true, Message: '' };
     switch (command.Action) {
       case 'ready':
+      case 'reconnect':
         if (!polling) {
           polling = true;
           poll = scheduler.after(tick, 1000);

@@ -36,7 +36,7 @@ namespace CinnaFanCon
         private System.Drawing.Icon trayIcon;
         private HwndSource windowSource;
         private WindowState restoredState=WindowState.Normal;
-        private bool ready,closing,exitRequested,stopPending,captureStarted,setupPending,verifyTrayExit;
+        private bool ready,closing,exitRequested,stopPending,captureStarted,setupPending,reconnectPending,verifyTrayExit;
         private bool rememberMotherboard;
         private static string MotherboardPreference {get{return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"cinna-fanCon","motherboard-access.enabled");}}
         public int TestExitCode;
@@ -155,10 +155,12 @@ namespace CinnaFanCon
         private void Reply(string id,string text,bool success){Post(new WireMessage {Type="reply",Id=id,Message=text,Success=success});}
         private void StartWorker(bool elevated)
         {
-            worker=new WorkerClient();
-            worker.Received+=message=>Dispatcher.BeginInvoke(new Action(async delegate
+            var client=new WorkerClient();worker=client;
+            client.Received+=message=>Dispatcher.BeginInvoke(new Action(async delegate
             {
-                if(closing)return;Post(message);
+                if(closing||worker!=client)return;
+                if(message.Type=="service-error"&&reconnectPending)return;
+                Post(message);
                 if(rememberMotherboard&&message.Type=="snapshot"&&message.Snapshot.Administrator&&message.Snapshot.PawnIoInstalled)
                 {
                     try{Directory.CreateDirectory(Path.GetDirectoryName(MotherboardPreference));File.WriteAllText(MotherboardPreference,"enabled");}catch{ }
@@ -166,7 +168,39 @@ namespace CinnaFanCon
                 }
                 if(message.Type=="snapshot"&&ready&&capturePath!=null&&!captureStarted){captureStarted=true;await CaptureAndTest();}
             }));
-            worker.Start(elevated,demo);
+            client.Start(elevated,demo);
+        }
+        private async Task ConnectWorker(string id,bool reconnect)
+        {
+            if(reconnectPending||setupPending||stopPending){Reply(id,"正在处理风扇服务，请等待当前操作完成。",false);return;}
+            reconnectPending=true;
+            try
+            {
+                bool restarted=false;
+                var current=worker;
+                WireMessage frame=null;
+                if(current!=null)
+                {
+                    try{frame=await current.WaitForSnapshotAsync(reconnect?3500:12000,reconnect);}
+                    catch{if(!reconnect)throw;}
+                }
+                if(frame==null)
+                {
+                    bool elevated=!demo&&((current!=null&&current.Elevated)||File.Exists(MotherboardPreference));
+                    if(current!=null)
+                    {
+                        if(!await current.StopAsync())throw new InvalidOperationException("旧风扇服务尚未完成恢复和退出，已停止重连以避免两个服务同时调节。请稍后重试；不会强制结束服务。");
+                        current.Dispose();if(worker==current)worker=null;
+                    }
+                    StartWorker(elevated);restarted=true;
+                    frame=await worker.WaitForSnapshotAsync(15000,false);
+                }
+                Post(frame);
+                Reply(id,restarted?"风扇服务已重新启动，已收到新读数。配置已保留，请核对风扇状态后重新应用设置。":"已连接风扇服务，已收到新读数。",true);
+                if(restarted)Post(new WireMessage {Type="notice",Message="风扇服务已重新启动。请核对温度和转速后重新应用设置；异常退出前的恢复结果无法确认。",Success=true});
+            }
+            catch(Exception error){Reply(id,error.Message,false);}
+            finally{reconnectPending=false;}
         }
         private async void OnMessage(object sender,CoreWebView2WebMessageReceivedEventArgs e)
         {
@@ -178,18 +212,24 @@ namespace CinnaFanCon
             {
                 if(command.Action=="ready")
                 {
-                    ready=true;Reply(command.Id,"界面已就绪。",true);
-                    if(worker!=null&&worker.Latest!=null){Post(worker.Latest);if(capturePath!=null&&!captureStarted){captureStarted=true;await CaptureAndTest();}}
+                    ready=true;await ConnectWorker(command.Id,false);
+                    if(capturePath!=null&&!captureStarted&&worker!=null&&worker.Connected&&worker.Latest!=null)
+                    {captureStarted=true;await CaptureAndTest();}
                 }
+                else if(command.Action=="reconnect")await ConnectWorker(command.Id,true);
                 else if(command.Action=="minimize")WindowState=WindowState.Minimized;
                 else if(command.Action=="maximize")WindowState=WindowState==WindowState.Maximized?WindowState.Normal:WindowState.Maximized;
                 else if(command.Action=="close")Close();
                 else if(command.Action=="exit")RequestExit();
                 else if(command.Action=="drag")BeginWindowDrag();
-                else if(command.Action=="enableMotherboard")await EnableMotherboard(command.Id);
+                else if(command.Action=="enableMotherboard")
+                {
+                    if(reconnectPending){Reply(command.Id,"正在重新连接风扇服务，请等待完成。",false);return;}
+                    await EnableMotherboard(command.Id);
+                }
                 else if(command.Action=="smart"||command.Action=="plan"||command.Action=="release"||command.Action=="apply"||command.Action=="rescan")
                 {
-                    if(setupPending){Reply(command.Id,"正在设置主板访问，请等待安装和授权完成。",false);return;}
+                    if(setupPending||reconnectPending){Reply(command.Id,"正在连接或设置风扇服务，请等待完成。",false);return;}
                     if(worker==null||!worker.Send(command))Reply(command.Id,"尚未连接风扇服务，请稍后再试。",false);
                 }
                 else Reply(command.Id,"不支持此操作。",false);
@@ -405,9 +445,9 @@ namespace CinnaFanCon
             if(closing)return;e.Cancel=true;
             if(!exitRequested&&tray!=null){MinimizeToTray();return;}
             if(stopPending)return;
-            if(setupPending)
+            if(setupPending||reconnectPending)
             {
-                exitRequested=false;Restore();Post(new WireMessage {Type="notice",Message="主板访问设置尚未完成，请完成安装或取消授权后再退出。",Success=false});return;
+                exitRequested=false;Restore();Post(new WireMessage {Type="notice",Message="风扇服务正在连接或设置，请完成当前操作后再退出。",Success=false});return;
             }
             stopPending=true;
             try

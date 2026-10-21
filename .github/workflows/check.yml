@@ -46,6 +46,9 @@ jobs:
         shell: pwsh
       - run: ./scripts/test.ps1
         shell: pwsh
+      - name: Test worker disconnection and shutdown
+        run: ./scripts/test-worker-connection.ps1
+        shell: pwsh
       - name: Build Windows installer
         run: ./scripts/build-installer.ps1
         shell: pwsh

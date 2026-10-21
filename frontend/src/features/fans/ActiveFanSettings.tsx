@@ -2,7 +2,13 @@ import { Alert, Flex, Table, Tag, Typography } from 'antd';
 import { curveLabel, sourceLabel } from './coolingPlan.ts';
 import { type Channel, channelName, rpmFor, type Snapshot } from './model.ts';
 
-export default function ActiveFanSettings({ snapshot }: { snapshot: Snapshot }) {
+export default function ActiveFanSettings({
+  snapshot,
+  stale = false,
+}: {
+  snapshot: Snapshot;
+  stale?: boolean;
+}) {
   const active = snapshot.Snapshot.Channels.filter((channel) => channel.Owned);
   return (
     <Flex vertical gap={16}>
@@ -34,17 +40,23 @@ export default function ActiveFanSettings({ snapshot }: { snapshot: Snapshot }) 
         }}
         columns={[
           {
-            title: '正在调节',
+            title: stale ? '上次接管' : '正在调节',
             key: 'name',
             render: (_, channel) => (
               <Flex vertical gap={4}>
                 <Typography.Text strong>{channelName(channel, snapshot)}</Typography.Text>
                 <Tag
                   color={
-                    channel.Error ? 'red' : channel.Status.includes('保护') ? 'orange' : 'blue'
+                    stale
+                      ? 'default'
+                      : channel.Error
+                        ? 'red'
+                        : channel.Status.includes('保护')
+                          ? 'orange'
+                          : 'blue'
                   }
                 >
-                  {channel.Status}
+                  {stale ? '状态未确认' : channel.Status}
                 </Tag>
               </Flex>
             ),
@@ -56,16 +68,16 @@ export default function ActiveFanSettings({ snapshot }: { snapshot: Snapshot }) 
               const rpm = rpmFor(channel, snapshot);
               return (
                 <Flex vertical gap={4}>
-                  <Typography.Text>{channel.Target ?? '—'}%</Typography.Text>
+                  <Typography.Text>{stale ? '—' : `${channel.Target ?? '—'}%`}</Typography.Text>
                   <Typography.Text type="secondary">
-                    {rpm === null ? '暂无转速' : `${Math.round(rpm)} RPM`}
+                    {stale ? '读数已过期' : rpm === null ? '暂无转速' : `${Math.round(rpm)} RPM`}
                   </Typography.Text>
                 </Flex>
               );
             },
           },
           {
-            title: '已应用参数',
+            title: stale ? '上次应用参数' : '已应用参数',
             key: 'parameters',
             render: (_, channel) => {
               const profile = channel.ActiveProfile;
@@ -88,7 +100,9 @@ export default function ActiveFanSettings({ snapshot }: { snapshot: Snapshot }) 
         ]}
       />
       <Typography.Text type="secondary">
-        其余 {snapshot.Snapshot.Channels.length - active.length} 组风扇使用原设置。
+        {stale
+          ? '当前硬件状态未确认，重新连接后会更新。'
+          : `其余 ${snapshot.Snapshot.Channels.length - active.length} 组风扇使用原设置。`}
       </Typography.Text>
     </Flex>
   );

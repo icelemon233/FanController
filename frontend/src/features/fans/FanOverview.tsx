@@ -57,31 +57,39 @@ export default function FanOverview({ onDevices }: { onDevices: () => void }) {
               <div key={stat.key} className="temperature-reading">
                 <Flex className="temperature-head" justify="space-between" align="center">
                   <Text>{stat.label}</Text>
-                  {stat.value !== null && (
-                    <Tag
-                      variant="filled"
-                      color={stat.value >= 90 ? 'red' : stat.value >= 75 ? 'orange' : undefined}
-                    >
-                      {stat.value >= 90 ? '高温' : stat.value >= 75 ? '较热' : '正常'}
-                    </Tag>
+                  {stale ? (
+                    <Tag variant="filled">读数已过期</Tag>
+                  ) : (
+                    stat.value !== null && (
+                      <Tag
+                        variant="filled"
+                        color={stat.value >= 90 ? 'red' : stat.value >= 75 ? 'orange' : undefined}
+                      >
+                        {stat.value >= 90 ? '高温' : stat.value >= 75 ? '较热' : '正常'}
+                      </Tag>
+                    )
                   )}
                 </Flex>
                 <div className="stat-value-row">
                   <Statistic
-                    value={stat.value ?? '—'}
+                    value={stale ? '—' : (stat.value ?? '—')}
                     precision={0}
                     suffix={
-                      stat.value !== null ? <span className="temperature-unit">°C</span> : null
+                      !stale && stat.value !== null ? (
+                        <span className="temperature-unit">°C</span>
+                      ) : null
                     }
                   />
-                  <MiniTrend values={stat.values} color={stat.color} />
+                  <MiniTrend values={stale ? [] : stat.values} color={stat.color} />
                 </div>
                 <Text type="secondary" className="stat-subtitle" ellipsis>
-                  {stat.value === null
-                    ? stat.key === 'CPU' && needsSetup
-                      ? '请先启用主板访问'
-                      : '暂无有效温度读数'
-                    : stat.name}
+                  {stale
+                    ? '等待风扇服务更新读数'
+                    : stat.value === null
+                      ? stat.key === 'CPU' && needsSetup
+                        ? '请先启用主板访问'
+                        : '暂无有效温度读数'
+                      : stat.name}
                 </Text>
               </div>
             ))}
@@ -89,15 +97,15 @@ export default function FanOverview({ onDevices }: { onDevices: () => void }) {
         </Card>
         <Card className="control-status-panel">
           <Flex justify="space-between" align="center">
-            <Text>已接管风扇</Text>
-            <Tag color={active ? 'blue' : undefined} variant="filled">
-              {active ? '调节中' : '未开启'}
+            <Text>{stale ? '上次接管风扇' : '已接管风扇'}</Text>
+            <Tag color={!stale && active ? 'blue' : undefined} variant="filled">
+              {stale ? '状态未确认' : active ? '调节中' : '未开启'}
             </Tag>
           </Flex>
           <div className="stat-value-row">
             <Statistic value={active} suffix={<span className="temperature-unit">组</span>} />
             <FanIcon
-              spin={active > 0}
+              spin={active > 0 && !stale}
               style={{
                 fontSize: 32,
                 color: active ? token.colorPrimary : token.colorTextSecondary,
@@ -106,11 +114,13 @@ export default function FanOverview({ onDevices }: { onDevices: () => void }) {
           </div>
           <Flex justify="space-between" align="center" gap={12}>
             <Text type="secondary" className="stat-subtitle">
-              {active
-                ? cooling === '自定义'
-                  ? '使用自定义设置'
-                  : `${cooling ?? '已应用方案'}`
-                : `${eligible} 组可自动调节`}
+              {stale
+                ? '仅显示断连前的记录'
+                : active
+                  ? cooling === '自定义'
+                    ? '使用自定义设置'
+                    : `${cooling ?? '已应用方案'}`
+                  : `${eligible} 组可自动调节`}
             </Text>
             <Button type="text" size="small" onClick={() => onDevices()}>
               查看风扇
@@ -144,7 +154,7 @@ export default function FanOverview({ onDevices }: { onDevices: () => void }) {
           </Space>
         </Flex>
         {active > 0 ? (
-          <ActiveFanSettings snapshot={snapshot} />
+          <ActiveFanSettings snapshot={snapshot} stale={stale} />
         ) : (
           <>
             <Title level={5} style={{ margin: '24px 0 16px' }}>
@@ -225,31 +235,37 @@ export default function FanOverview({ onDevices }: { onDevices: () => void }) {
                 </div>
               </div>
               <div className="device-state">
-                <Tag color={managed ? 'blue' : undefined} variant="filled">
-                  {managed
-                    ? groupChannels.some((c) => c.Owned && c.Mode === 1)
-                      ? '单组设置'
-                      : '自动调节'
-                    : groupChannels.length
-                      ? '未接管'
-                      : device.group === '主板' && needsSetup
-                        ? '待授权'
-                        : '无可控风扇'}
+                <Tag color={!stale && managed ? 'blue' : undefined} variant="filled">
+                  {stale
+                    ? '状态未确认'
+                    : managed
+                      ? groupChannels.some((c) => c.Owned && c.Mode === 1)
+                        ? '单组设置'
+                        : '自动调节'
+                      : groupChannels.length
+                        ? '未接管'
+                        : device.group === '主板' && needsSetup
+                          ? '待授权'
+                          : '无可控风扇'}
                 </Tag>
                 <Text type="secondary">
-                  {groupChannels.length
-                    ? `${groupChannels.length} 组可控，${managed} 组已接管`
-                    : device.group === '主板' && needsSetup
-                      ? '请先启用主板访问'
-                      : '未检测到可控接口'}
+                  {stale
+                    ? `上次检测到 ${groupChannels.length} 组可控风扇`
+                    : groupChannels.length
+                      ? `${groupChannels.length} 组可控，${managed} 组已接管`
+                      : device.group === '主板' && needsSetup
+                        ? '请先启用主板访问'
+                        : '未检测到可控接口'}
                 </Text>
               </div>
               <Text className="device-rpm">
-                {rpms.length
-                  ? rpms.length === 1 && rpms[0] !== undefined
-                    ? `${Math.round(rpms[0]).toLocaleString()} RPM`
-                    : `${Math.round(Math.min(...rpms))}–${Math.round(Math.max(...rpms))} RPM`
-                  : '暂无转速'}
+                {stale
+                  ? '待读数'
+                  : rpms.length
+                    ? rpms.length === 1 && rpms[0] !== undefined
+                      ? `${Math.round(rpms[0]).toLocaleString()} RPM`
+                      : `${Math.round(Math.min(...rpms))}–${Math.round(Math.max(...rpms))} RPM`
+                    : '暂无转速'}
               </Text>
               <Button type="text" onClick={() => onDevices()}>
                 查看

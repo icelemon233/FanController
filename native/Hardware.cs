@@ -68,6 +68,35 @@ namespace CinnaFanCon
             }
             catch { return "未识别"; }
         }
+        private static List<string> DisplayAdapterIds()
+        {
+            try
+            {
+                using(var query=new ManagementObjectSearcher("SELECT PNPDeviceID FROM Win32_VideoController"))
+                {
+                    query.Options.Timeout=TimeSpan.FromSeconds(5);
+                    using(var objects=query.Get())
+                    {
+                        var ids=new List<string>();
+                        foreach(ManagementObject adapter in objects)using(adapter)ids.Add(Convert.ToString(adapter["PNPDeviceID"]));
+                        return ids;
+                    }
+                }
+            }
+            catch{return null;}
+        }
+        internal static Computer CreateMonitor(IEnumerable<string> adapterIds,bool hasAdlxGpu)
+        {
+            var ids=adapterIds==null?null:adapterIds.ToList();
+            // LHM 0.9.6 enables all GPU vendors together. Its AMD ADL frame-metric
+            // poll can terminate the process; never construct that path on AMD
+            // or when adapter identity is unknown, even if ADLX is unavailable.
+            bool legacyGpu=!hasAdlxGpu&&ids!=null&&ids.Count>0&&ids.All(id=>!String.IsNullOrEmpty(id)&&
+                (id.IndexOf("VEN_10DE",StringComparison.OrdinalIgnoreCase)>=0||id.IndexOf("VEN_8086",StringComparison.OrdinalIgnoreCase)>=0)&&
+                id.IndexOf("VEN_1002",StringComparison.OrdinalIgnoreCase)<0);
+            return new Computer {IsMotherboardEnabled=true,IsCpuEnabled=true,IsGpuEnabled=legacyGpu,
+                IsMemoryEnabled=false,IsStorageEnabled=false,IsNetworkEnabled=false,IsControllerEnabled=false};
+        }
 
         public void Open()
         {
@@ -89,8 +118,12 @@ namespace CinnaFanCon
             }
             try
             {
-                computer=new Computer { IsMotherboardEnabled=true,IsCpuEnabled=true,IsGpuEnabled=true,
-                    IsMemoryEnabled=false,IsStorageEnabled=false,IsNetworkEnabled=false,IsControllerEnabled=false };
+                var adapterIds=DisplayAdapterIds();
+                computer=CreateMonitor(adapterIds,adlx!=null&&adlx.Ports.Count>0);
+                if(!computer.IsGpuEnabled&&adapterIds!=null&&adapterIds.Any(id=>id!=null&&id.IndexOf("VEN_10DE",StringComparison.OrdinalIgnoreCase)>=0))
+                    initialNotices.Add("为避开旧版 AMD 监测接口，当前仅通过 ADLX 读取 AMD 显卡；同机的其他显卡暂不监测。");
+                if(!computer.IsGpuEnabled&&(adlx==null||adlx.Ports.Count==0))
+                    initialNotices.Add("显卡监测未就绪。AMD 显卡仅使用 ADLX 接口，请检查是否已安装完整驱动；CPU 与主板监测不受影响。");
                 computer.Open();
             }
             catch(Exception e) { initialNotices.Add("无法启用硬件监测接口："+e.Message); }
@@ -125,11 +158,11 @@ namespace CinnaFanCon
 
         private void Read(IHardware hardware,List<SensorReading> readings,List<string> notices)
         {
+            if(hardware.HardwareType==HardwareType.GpuAmd)return;
             bool success=true;
             try { hardware.Update(); }
             catch(Exception e) { notices.Add(hardware.Name+"："+e.Message); success=false; }
-            bool adlxGpu=hardware.HardwareType==HardwareType.GpuAmd && adlx!=null && adlx.Ports.Count>0;
-            if(success && !adlxGpu)
+            if(success)
             {
                 foreach(var sensor in hardware.Sensors)
                     if(sensor.SensorType==SensorType.Temperature || sensor.SensorType==SensorType.Fan || sensor.SensorType==SensorType.Control)

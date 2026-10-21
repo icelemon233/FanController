@@ -6,7 +6,7 @@
 
 A Windows application that adjusts supported CPU, case and GPU fans by temperature. Build a quiet-first control plan, review each fan’s settings, then apply it. Temperature curves and fixed output remain editable per fan group.
 
-[Download the Windows installer](https://github.com/icelemon233/FanController/releases/download/v0.4.4/FanController-v0.4.4-windows-x64-setup.exe) · [Portable ZIP](https://github.com/icelemon233/FanController/releases/tag/v0.4.4) · [Build from source](./docs/build.md)
+[Download the Windows installer](https://github.com/icelemon233/FanController/releases/download/v0.4.5/FanController-v0.4.5-windows-x64-setup.exe) · [Portable ZIP](https://github.com/icelemon233/FanController/releases/tag/v0.4.5) · [Build from source](./docs/build.md)
 
 <img src="./docs/images/overview.png" alt="FanController overview in demo mode with simulated temperature and fan readings" width="960" />
 
@@ -40,7 +40,9 @@ For the portable edition, extract the complete ZIP and open `FanController.exe`.
 
 For CPU temperature and motherboard fan access, click **启用主板访问** (Enable motherboard access). The app uses [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) and [PawnIO](https://pawnio.eu/). When PawnIO is missing, setup downloads its signed installer from the official release and checks its SHA-256. Complete the installer and Windows authorization prompts; the app then reconnects to the fan worker and detects supported interfaces.
 
-AMD GPU control uses the installed driver's [ADLX interface](https://github.com/GPUOpen-LibrariesAndSDKs/ADLX). NVIDIA interfaces are detected through LibreHardwareMonitor. Available controls depend on the hardware and driver. Dedicated USB fan controllers and Intel GPU fan control have not been validated.
+AMD GPU monitoring and control use the installed driver's [ADLX interface](https://github.com/GPUOpen-LibrariesAndSDKs/ADLX). Legacy AMD ADL monitoring is disabled because its frame-metric polling can crash the worker. NVIDIA interfaces are detected through LibreHardwareMonitor on systems without AMD GPUs. On mixed AMD/other-GPU systems, this version monitors AMD GPUs only; CPU and motherboard monitoring remain available. Available controls depend on the hardware and driver. Dedicated USB fan controllers and Intel GPU fan control have not been validated.
+
+If readings stop, **重新连接** (Reconnect) checks the worker, waits for a normal exit before any required restart, and waits for fresh readings. Progress and failure reasons remain visible. Saved profiles are retained, and settings are not reapplied automatically. After an unexpected worker exit, verify fan behaviour before applying settings; restoration before the crash cannot be confirmed.
 
 This preview has automated tests for simulated fan control and desktop interaction. Fan-speed writes on physical hardware have not yet been validated. Fans connected to one control interface cannot be adjusted separately. Check your hardware's PWM/DC mode and RPM feedback before use.
 
