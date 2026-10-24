@@ -16,9 +16,11 @@ export function FanControlProvider({
     const off = controller.onFeedback((event) => {
       if (event.notice) {
         notification[event.type === 'error' ? 'error' : 'info']({
-          title: event.type === 'error' ? '风扇服务异常' : '风扇服务',
+          key: 'fan-service-notice',
+          title: event.type === 'error' ? '操作未完成' : '风扇服务',
           description: event.message,
           placement: 'bottomRight',
+          duration: event.type === 'error' ? 0 : 4.5,
         });
       } else
         message.open({

@@ -1,5 +1,6 @@
-import { Flex, InputNumber, Table, Tag, Typography, theme } from 'antd';
-import { useRef } from 'react';
+import { Flex, Table, Tag, Typography, theme } from 'antd';
+import { useEffect, useRef, useState } from 'react';
+import { NumberInput as InputNumber } from '../../components/NumberInput.tsx';
 import type { CurvePoint } from './model.ts';
 
 export default function CurveEditor({
@@ -13,9 +14,19 @@ export default function CurveEditor({
 }) {
   const { token } = theme.useToken();
   const svg = useRef<SVGSVGElement>(null);
+  const container = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(520);
+  useEffect(() => {
+    const element = container.current;
+    if (!element) return;
+    const update = () => setWidth(Math.max(240, element.clientWidth - 8));
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    update();
+    return () => observer.disconnect();
+  }, []);
   const drag = useRef<number | null>(null);
-  const width = 620,
-    height = 210,
+  const height = 200,
     left = 38,
     right = 18,
     top = 16,
@@ -34,6 +45,7 @@ export default function CurveEditor({
   return (
     <Flex vertical gap={12}>
       <div
+        ref={container}
         className="curve-canvas"
         style={{ background: token.colorFillQuaternary, borderColor: token.colorBorderSecondary }}
       >
@@ -88,20 +100,20 @@ export default function CurveEditor({
                 y={y(d) + 4}
                 fill={token.colorTextTertiary}
                 textAnchor="end"
-                fontSize="10"
+                fontSize="12"
               >
                 {d}
               </text>
             </g>
           ))}
-          {[20, 35, 50, 65, 80, 95, 110].map((t) => (
+          {(width < 420 ? [20, 50, 80, 110] : [20, 35, 50, 65, 80, 95, 110]).map((t) => (
             <text
               key={t}
               x={x(t)}
               y={height - 10}
               fill={token.colorTextTertiary}
               textAnchor="middle"
-              fontSize="10"
+              fontSize="12"
             >
               {t}°
             </text>
@@ -153,6 +165,7 @@ export default function CurveEditor({
         <Tag variant="filled">最低输出 {minimum}%</Tag>
       </Flex>
       <Table
+        scroll={{ x: 300 }}
         size="small"
         pagination={false}
         rowKey="index"

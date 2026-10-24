@@ -6,7 +6,7 @@
 
 A Windows application that adjusts supported CPU, case and GPU fans by temperature. Build a quiet-first control plan, review each fan’s settings, then apply it. Temperature curves and fixed output remain editable per fan group.
 
-[Download the Windows installer](https://github.com/icelemon233/FanController/releases/download/v0.4.5/FanController-v0.4.5-windows-x64-setup.exe) · [Portable ZIP](https://github.com/icelemon233/FanController/releases/tag/v0.4.5) · [Build from source](./docs/build.md)
+[Download the Windows installer](https://github.com/icelemon233/FanController/releases/download/v0.4.6/FanController-v0.4.6-windows-x64-setup.exe) · [Portable ZIP](https://github.com/icelemon233/FanController/releases/tag/v0.4.6) · [Build from source](./docs/build.md)
 
 <img src="./docs/images/overview.png" alt="FanController overview in demo mode with simulated temperature and fan readings" width="960" />
 
@@ -26,7 +26,7 @@ Output percentages are control values, not RPM targets. There is no automatic RP
 
 <img src="./docs/images/plan.png" alt="Per-fan control-plan editor using simulated hardware" width="960" />
 
-Closing or minimizing the window keeps the app controlling fans in the tray. Double-click the tray icon to reopen the window. Choose **恢复原设置并退出** (Restore prior settings and exit) from its right-click menu to quit. The theme button switches between light and dark appearances. New installations start with the dark theme; an existing preference is preserved.
+Minimizing keeps the window in the taskbar and fans under control. Closing defaults to the tray; **设置** (Settings) at the bottom of the sidebar can change this to exit. Double-click the tray icon to reopen the window. Choose **恢复原设置并退出** (Restore prior settings and exit) in Settings or the tray menu to quit. Settings offers light, dark and system themes. New installations follow Windows; existing preferences are preserved. Closing an editor or exiting with unapplied changes asks whether to discard them.
 
 The installer sets up the app for the current user and adds an entry in Windows Installed apps. During an interactive update, confirm the close prompt and setup will close the existing app normally, wait for fan restoration and the worker to exit, then continue. If shutdown fails, setup stops before changing program files. Silent installation and uninstall still require the app to be closed first. Uninstall removes packaged files and shortcuts; saved fan profiles remain. The installer is currently unsigned.
 

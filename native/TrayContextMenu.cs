@@ -18,6 +18,7 @@ namespace CinnaFanCon
         private Font menuFont;
         private float scale=1;
         private bool dark,highContrast;
+        private bool? preferredDark;
         private Color surface,ink,hover,border,muted;
         private static bool Windows11 {get{return Environment.OSVersion.Version.Build>=22000;}}
 
@@ -52,7 +53,7 @@ namespace CinnaFanCon
         protected override void OnOpening(CancelEventArgs e)
         {
             uint dpi=96;try{dpi=GetDpiForWindow(Handle);}catch(EntryPointNotFoundException){ }
-            ApplyAppearance(SystemDark(),(int)dpi);base.OnOpening(e);
+            ApplyAppearance(preferredDark??SystemDark(),(int)dpi);base.OnOpening(e);
         }
         protected override void OnOpened(EventArgs e)
         {
@@ -68,7 +69,7 @@ namespace CinnaFanCon
             try
             {
                 int dpi=(int)GetDpiForWindow(Handle);
-                if(dpi>0&&Math.Abs(scale-dpi/96f)>.01f)ApplyAppearance(SystemDark(),dpi);
+                if(dpi>0&&Math.Abs(scale-dpi/96f)>.01f)ApplyAppearance(preferredDark??SystemDark(),dpi);
                 var area=Screen.FromHandle(Handle).WorkingArea;
                 Location=new Point(Math.Max(area.Left,Math.Min(Left,area.Right-Width)),Math.Max(area.Top,Math.Min(Top,area.Bottom-Height)));
             }
@@ -81,14 +82,18 @@ namespace CinnaFanCon
             catch{return false;}
         }
         internal int Pixels(float value){return (int)Math.Round(value*scale);}
+        internal void SetTheme(bool useDark)
+        {
+            preferredDark=useDark;ApplyAppearance(useDark,(int)Math.Round(scale*96));
+        }
         internal void ApplyAppearance(bool useDark,int dpi)
         {
             dark=useDark;highContrast=SystemInformation.HighContrast;scale=Math.Max(1,dpi/96f);
-            surface=highContrast?SystemColors.Menu:dark?Color.FromArgb(44,44,44):Color.FromArgb(249,249,249);
-            ink=highContrast?SystemColors.MenuText:dark?Color.FromArgb(242,242,242):Color.FromArgb(27,27,27);
-            hover=highContrast?SystemColors.Highlight:dark?Color.FromArgb(61,61,61):Color.FromArgb(235,235,235);
-            border=highContrast?SystemColors.WindowText:dark?Color.FromArgb(70,70,70):Color.FromArgb(216,216,216);
-            muted=highContrast?SystemColors.GrayText:dark?Color.FromArgb(145,145,145):Color.FromArgb(120,120,120);
+            surface=highContrast?SystemColors.Menu:dark?Color.FromArgb(36,39,43):Color.White;
+            ink=highContrast?SystemColors.MenuText:dark?Color.FromArgb(242,239,234):Color.FromArgb(70,51,42);
+            hover=highContrast?SystemColors.Highlight:dark?Color.FromArgb(38,60,69):Color.FromArgb(231,244,249);
+            border=highContrast?SystemColors.WindowText:dark?Color.FromArgb(59,65,71):Color.FromArgb(228,226,221);
+            muted=highContrast?SystemColors.GrayText:dark?Color.FromArgb(184,178,170):Color.FromArgb(112,105,96);
             // Pixel fonts avoid WinForms' legacy primary-monitor font scaling
             // when this WPF-hosted menu moves between displays with different DPI.
             float fontSize=Math.Max(14,SystemFonts.MenuFont.SizeInPoints*96/72)*scale;

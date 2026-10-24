@@ -63,7 +63,9 @@ export default function FanOverview({ onDevices }: { onDevices: () => void }) {
                     stat.value !== null && (
                       <Tag
                         variant="filled"
-                        color={stat.value >= 90 ? 'red' : stat.value >= 75 ? 'orange' : undefined}
+                        color={
+                          stat.value >= 90 ? 'error' : stat.value >= 75 ? 'warning' : undefined
+                        }
                       >
                         {stat.value >= 90 ? '高温' : stat.value >= 75 ? '较热' : '正常'}
                       </Tag>
@@ -82,7 +84,7 @@ export default function FanOverview({ onDevices }: { onDevices: () => void }) {
                   />
                   <MiniTrend values={stale ? [] : stat.values} color={stat.color} />
                 </div>
-                <Text type="secondary" className="stat-subtitle" ellipsis>
+                <Text type="secondary" className="stat-subtitle" title={stat.name ?? undefined}>
                   {stale
                     ? '等待风扇服务更新读数'
                     : stat.value === null
@@ -98,7 +100,7 @@ export default function FanOverview({ onDevices }: { onDevices: () => void }) {
         <Card className="control-status-panel">
           <Flex justify="space-between" align="center">
             <Text>{stale ? '上次接管风扇' : '已接管风扇'}</Text>
-            <Tag color={!stale && active ? 'blue' : undefined} variant="filled">
+            <Tag color={!stale && active ? 'processing' : undefined} variant="filled">
               {stale ? '状态未确认' : active ? '调节中' : '未开启'}
             </Tag>
           </Flex>
@@ -145,7 +147,7 @@ export default function FanOverview({ onDevices }: { onDevices: () => void }) {
             <Button
               data-testid="configure-plan"
               type="primary"
-              icon={<ControlOutlined />}
+              icon={<ControlOutlined aria-hidden="true" />}
               disabled={Boolean(busy) || stale || !channels.length}
               onClick={() => setPlanSession(++sequence.current)}
             >
@@ -180,7 +182,7 @@ export default function FanOverview({ onDevices }: { onDevices: () => void }) {
         )}
         <Flex className="protection-note" justify="space-between" gap={16} wrap>
           <Space>
-            <SafetyCertificateOutlined />
+            <SafetyCertificateOutlined aria-hidden="true" />
             <Text type="secondary">高温或必要温度失效时，已接管风扇立即设为最高输出。</Text>
           </Space>
           <Button type="link" size="small" onClick={() => onDevices()}>
@@ -208,13 +210,13 @@ export default function FanOverview({ onDevices }: { onDevices: () => void }) {
           {
             group: 'GPU',
             title: '显卡风扇',
-            icon: <FundProjectionScreenOutlined />,
+            icon: <FundProjectionScreenOutlined aria-hidden="true" />,
             device: fallbackGpu,
           },
           {
             group: '主板',
             title: 'CPU 与机箱风扇',
-            icon: <DesktopOutlined />,
+            icon: <DesktopOutlined aria-hidden="true" />,
             device: frame?.Board,
           },
         ].map((device) => {
@@ -229,13 +231,17 @@ export default function FanOverview({ onDevices }: { onDevices: () => void }) {
                 <span className="device-icon">{device.icon}</span>
                 <div>
                   <Text strong>{device.title}</Text>
-                  <Text type="secondary" className="device-model" ellipsis>
+                  <Text
+                    type="secondary"
+                    className="device-model"
+                    title={device.device ?? undefined}
+                  >
                     {device.device ?? '未识别设备'}
                   </Text>
                 </div>
               </div>
               <div className="device-state">
-                <Tag color={!stale && managed ? 'blue' : undefined} variant="filled">
+                <Tag color={!stale && managed ? 'processing' : undefined} variant="filled">
                   {stale
                     ? '状态未确认'
                     : managed
@@ -267,7 +273,7 @@ export default function FanOverview({ onDevices }: { onDevices: () => void }) {
                       : `${Math.round(Math.min(...rpms))}–${Math.round(Math.max(...rpms))} RPM`
                     : '暂无转速'}
               </Text>
-              <Button type="text" onClick={() => onDevices()}>
+              <Button type="text" aria-label={`查看${device.title}`} onClick={() => onDevices()}>
                 查看
               </Button>
             </Card>

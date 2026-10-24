@@ -15,6 +15,7 @@ import {
   Typography,
 } from 'antd';
 import { useState } from 'react';
+import { useDraftClose } from '../../components/useDraftClose.ts';
 import {
   createPlanDraft,
   curveLabel,
@@ -48,6 +49,7 @@ export default function CoolingPlanDrawer({
     () => entries.find((entry) => entry.included)?.profile.Id ?? entries[0]?.profile.Id,
   );
   const [reviewed, setReviewed] = useState<FanProfile[] | null>(null);
+  const closeDraft = useDraftClose(entries, busy, onClose);
   const selected = entries.find((entry) => entry.profile.Id === selectedId);
   const selectedChannel = snapshot.Snapshot.Channels.find((channel) => channel.Id === selectedId);
   const error = planError(entries, snapshot);
@@ -97,7 +99,9 @@ export default function CoolingPlanDrawer({
       size={1120}
       className="plan-drawer"
       open
-      onClose={onClose}
+      onClose={closeDraft}
+      keyboard={!busy}
+      mask={{ closable: !busy }}
       footer={
         <Flex justify="space-between" align="center" gap={12} wrap>
           <Text type="secondary">
@@ -106,13 +110,15 @@ export default function CoolingPlanDrawer({
               : '编辑期间风扇继续使用当前设置。'}
           </Text>
           <Space>
-            <Button disabled={busy} onClick={reviewed ? () => setReviewed(null) : onClose}>
+            <Button disabled={busy} onClick={reviewed ? () => setReviewed(null) : closeDraft}>
               {reviewed ? '返回编辑' : '取消'}
             </Button>
             <Button
               type="primary"
               data-testid={reviewed ? 'apply-plan' : 'review-plan'}
-              icon={reviewed ? <CheckOutlined /> : <EyeOutlined />}
+              icon={
+                reviewed ? <CheckOutlined aria-hidden="true" /> : <EyeOutlined aria-hidden="true" />
+              }
               loading={busy}
               disabled={busy || !connected || Boolean(error)}
               onClick={async () => {
@@ -153,7 +159,7 @@ export default function CoolingPlanDrawer({
                   className="plan-review-row"
                   title={profile.Name}
                   extra={
-                    <Tag color={profile.Mode !== 0 ? 'blue' : owned ? 'orange' : 'default'}>
+                    <Tag color={profile.Mode !== 0 ? 'processing' : owned ? 'warning' : 'default'}>
                       {profile.Mode !== 0 ? '接管并调节' : owned ? '恢复原设置' : '保留原设置'}
                     </Tag>
                   }
@@ -252,7 +258,7 @@ export default function CoolingPlanDrawer({
                           <Button
                             type="text"
                             size="small"
-                            icon={<EditOutlined />}
+                            icon={<EditOutlined aria-hidden="true" />}
                             aria-label={`编辑${entry.profile.Name}`}
                             data-testid={`plan-edit-${entry.profile.Id}`}
                             disabled={busy}

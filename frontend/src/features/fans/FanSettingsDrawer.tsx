@@ -7,7 +7,6 @@ import {
   Flex,
   Form,
   Input,
-  InputNumber,
   Radio,
   Select,
   Slider,
@@ -16,7 +15,9 @@ import {
   Tag,
   Typography,
 } from 'antd';
-import { useState } from 'react';
+import { useId, useState } from 'react';
+import { NumberInput as InputNumber } from '../../components/NumberInput.tsx';
+import { useDraftClose } from '../../components/useDraftClose.ts';
 import CurveEditor from './CurveEditor.tsx';
 import { quietProfile, roleFor, roleLabels } from './coolingPlan.ts';
 import type { Channel, FanProfile, FanRole, Snapshot } from './model.ts';
@@ -37,6 +38,7 @@ export default function FanSettingsDrawer({
   onClose: () => void;
   onApply: (profile: FanProfile) => Promise<boolean>;
 }) {
+  const fieldId = useId();
   const [draft, setDraft] = useState<FanProfile>(() => ({
     ...(snapshot.Profiles.some((item) => item.Id === channel.Id)
       ? profileFor(channel, snapshot)
@@ -46,6 +48,7 @@ export default function FanSettingsDrawer({
   const [manualSource, setManualSource] = useState(
     () => draft.Source !== snapshot.Recommendations.find((item) => item.Id === channel.Id)?.Source,
   );
+  const closeDraft = useDraftClose({ draft, manualSource }, busy, onClose);
   const recommendation = snapshot.Recommendations.find((r) => r.Id === channel.Id);
   const role = draft.Role ?? 'Unknown';
   const automaticSource = quietProfile(channel, snapshot, role).Source;
@@ -69,25 +72,31 @@ export default function FanSettingsDrawer({
       className="fan-drawer"
       title={
         <Space>
-          <SlidersOutlined />
+          <SlidersOutlined aria-hidden="true" />
           风扇设置
         </Space>
       }
       size={660}
       open
-      onClose={onClose}
+      onClose={closeDraft}
+      keyboard={!busy}
+      mask={{ closable: !busy }}
       extra={
-        <Tag color={channel.Owned ? 'blue' : 'default'}>{channel.Owned ? '调节中' : '未接管'}</Tag>
+        <Tag color={channel.Owned ? 'processing' : 'default'}>
+          {channel.Owned ? '调节中' : '未接管'}
+        </Tag>
       }
       footer={
         <Flex justify="space-between" align="center" gap={16}>
           <Typography.Text type="secondary">点击“应用设置”后生效</Typography.Text>
           <Space>
-            <Button onClick={onClose}>取消</Button>
+            <Button disabled={busy} onClick={closeDraft}>
+              取消
+            </Button>
             <Button
               data-testid="apply-channel"
               type="primary"
-              icon={<CheckOutlined />}
+              icon={<CheckOutlined aria-hidden="true" />}
               loading={busy}
               disabled={Boolean(error) || disabled || busy || !connected}
               onClick={apply}
@@ -113,20 +122,22 @@ export default function FanSettingsDrawer({
             description="当前无法调节这组风扇。可选择“恢复原设置”并应用。"
           />
         )}
-        <Form layout="vertical" requiredMark={false}>
-          <Form.Item label="显示名称">
+        <Form layout="vertical" requiredMark={false} disabled={busy}>
+          <Form.Item label="显示名称" htmlFor={`${fieldId}-name`}>
             <Input
+              id={`${fieldId}-name`}
               aria-label="风扇显示名称"
               value={draft.Name}
               maxLength={60}
               onChange={(e) => patch({ Name: e.target.value })}
             />
           </Form.Item>
-          <Form.Item label="风扇用途">
+          <Form.Item label="风扇用途" htmlFor={`${fieldId}-role`}>
             <Select
+              id={`${fieldId}-role`}
               aria-label="风扇用途"
               value={role}
-              disabled={channel.Group === 'GPU' || /pump|水泵/i.test(channel.Name)}
+              disabled={busy || channel.Group === 'GPU' || /pump|水泵/i.test(channel.Name)}
               options={(channel.Group === 'GPU'
                 ? ['GPU']
                 : /pump|水泵/i.test(channel.Name)
@@ -143,6 +154,7 @@ export default function FanSettingsDrawer({
           </Form.Item>
           <Form.Item label="控制方式">
             <Radio.Group
+              aria-label="单组控制方式"
               value={draft.Mode}
               onChange={(e) => patch({ Mode: e.target.value })}
               optionType="button"
@@ -192,11 +204,12 @@ export default function FanSettingsDrawer({
             <Form.Item
               label={
                 <Space>
-                  固定输出<Tag color="blue">{draft.Manual}%</Tag>
+                  固定输出<Tag color="processing">{draft.Manual}%</Tag>
                 </Space>
               }
             >
               <Slider
+                ariaLabelForHandle="固定输出百分比"
                 min={0}
                 max={100}
                 value={draft.Manual}
@@ -220,7 +233,7 @@ export default function FanSettingsDrawer({
               <Switch
                 aria-label="参与方案默认选择"
                 checked={!draft.Excluded}
-                disabled={role === 'Pump' || role === 'Unknown'}
+                disabled={busy || role === 'Pump' || role === 'Unknown'}
                 onChange={(checked) => patch({ Excluded: !checked })}
               />
               <Typography.Text type="secondary">
@@ -242,6 +255,7 @@ export default function FanSettingsDrawer({
                       <Space>
                         <Switch
                           aria-label="手动选择温度来源"
+                          disabled={busy}
                           checked={manualSource}
                           onChange={setManualSource}
                         />
@@ -249,6 +263,8 @@ export default function FanSettingsDrawer({
                       </Space>
                       {manualSource && (
                         <Select
+                          aria-label="单组温度来源"
+                          disabled={busy}
                           value={draft.Source}
                           onChange={(Source) => patch({ Source })}
                           options={[
@@ -261,16 +277,22 @@ export default function FanSettingsDrawer({
                           ]}
                         />
                       )}
-                      <CurveEditor
-                        points={draft.Points}
-                        minimum={draft.Minimum}
-                        onChange={(Points) => patch({ Points })}
-                      />
+                      <fieldset className="curve-fieldset" disabled={busy}>
+                        <CurveEditor
+                          points={draft.Points}
+                          minimum={draft.Minimum}
+                          onChange={(Points) => {
+                            if (!busy) patch({ Points });
+                          }}
+                        />
+                      </fieldset>
                     </>
                   )}
-                  <Form layout="vertical">
-                    <Form.Item label="最低输出">
+                  <Form layout="vertical" disabled={busy}>
+                    <Form.Item label="最低输出" htmlFor={`${fieldId}-minimum`}>
                       <InputNumber
+                        id={`${fieldId}-minimum`}
+                        aria-label="单组最低输出"
                         value={draft.Minimum}
                         min={20}
                         max={100}
@@ -309,8 +331,10 @@ export default function FanSettingsDrawer({
                         </Form.Item>
                       </Flex>
                     )}
-                    <Form.Item label="转速传感器">
+                    <Form.Item label="转速传感器" htmlFor={`${fieldId}-rpm`}>
                       <Select
+                        id={`${fieldId}-rpm`}
+                        aria-label="单组转速传感器"
                         value={draft.RpmId ?? ''}
                         onChange={(RpmId) => patch({ RpmId })}
                         options={[

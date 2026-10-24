@@ -139,5 +139,10 @@ export function parseHostEvent(value: unknown): FanEvent | Reply | undefined {
     };
   }
   if (value.Type === 'window' && typeof value.Maximized === 'boolean') return undefined;
+  if (
+    value.Type === 'window-state' &&
+    (value.Message === 'normal' || value.Message === 'maximized')
+  )
+    return undefined;
   throw new Error(protocolErrorMessage);
 }

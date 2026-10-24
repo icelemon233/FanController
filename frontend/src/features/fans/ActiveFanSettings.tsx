@@ -13,6 +13,7 @@ export default function ActiveFanSettings({
   return (
     <Flex vertical gap={16}>
       <Table<Channel>
+        scroll={{ x: 600 }}
         size="small"
         pagination={false}
         rowKey="Id"
@@ -50,10 +51,10 @@ export default function ActiveFanSettings({
                     stale
                       ? 'default'
                       : channel.Error
-                        ? 'red'
+                        ? 'error'
                         : channel.Status.includes('保护')
-                          ? 'orange'
-                          : 'blue'
+                          ? 'warning'
+                          : 'processing'
                   }
                 >
                   {stale ? '状态未确认' : channel.Status}

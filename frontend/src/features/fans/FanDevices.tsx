@@ -49,6 +49,7 @@ export default function FanDevices() {
         styles={{ body: { padding: 0 } }}
       >
         <Table<Channel>
+          scroll={{ x: 720 }}
           rowKey="Id"
           pagination={false}
           dataSource={channels}
@@ -73,11 +74,11 @@ export default function FanDevices() {
                     stale
                       ? 'default'
                       : c.Error
-                        ? 'red'
+                        ? 'error'
                         : c.Status.includes('保护')
-                          ? 'orange'
+                          ? 'warning'
                           : c.Owned
-                            ? 'blue'
+                            ? 'processing'
                             : 'default'
                   }
                 >
@@ -88,12 +89,13 @@ export default function FanDevices() {
             {
               title: '转速',
               key: 'rpm',
+              align: 'right',
               render: (_, c) => {
                 const v = stale ? null : rpmFor(c, snapshot);
                 return v === null ? (
                   <Text type="secondary">{stale ? '读数已过期' : '暂无读数'}</Text>
                 ) : (
-                  <Text>{Math.round(v).toLocaleString()} RPM</Text>
+                  <Text className="tabular-number">{Math.round(v).toLocaleString()} RPM</Text>
                 );
               },
             },
@@ -159,6 +161,7 @@ export default function FanDevices() {
                   ]}
                 />
                 <Table
+                  scroll={{ x: 560 }}
                   size="small"
                   rowKey="Id"
                   pagination={false}

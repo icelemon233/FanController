@@ -1,5 +1,21 @@
 # Interface design
 
+## Shared UI and window behavior — 2026-10-24
+
+React and Ant Design remain the UI foundation. `frontend/src/app/theme.ts` maps the Cinna semantic palette to Ant Design and CSS variables: warm workspace, neutral panels, cyan primary actions and separate success, warning and error states. Controls use 36 px desktop density, 8 px control corners and 12 px panel corners. System fonts and tabular monitoring numbers are retained.
+
+Semantic status backgrounds are explicit: deriving them from the darker foreground seeds produced insufficient light-theme contrast. Tests check Ant Design's resulting tokens for 4.5:1 status text and 3:1 control boundaries in both themes. Initial service connection is also distinguished from a restart, so the review screen is not covered by an incorrect recovery notice.
+
+The 40 px titlebar contains the existing product icon and name once. The sidebar uses 224/56 px expanded/collapsed widths, remembers the choice and retains a visible toggle at small widths. Application settings stay at its bottom. Settings owns theme and close behavior; per-fan settings remain a separate task. Existing theme storage keys and hardware profiles are unchanged. The native host mirrors appearance preferences for startup, follows the resolved frontend theme and keeps high-contrast native menu colors.
+
+`components/NumberInput.tsx` preserves Ant Design input semantics while translating the pinned component's English step-button labels. `components/useDraftClose.ts` protects both editor drawers and native exit requests. Shared tokens cover controls, menus, radio selection and checkmarks; device actions stay available in narrow layouts. Curve coordinates follow container width with 12 px ticks; temperature trends leave gaps for missing readings.
+
+Native WebView2 draggable regions provide titlebar movement, double-click and the system menu, with the bridge retained for older runtimes. Minimize keeps a taskbar window, close uses the saved tray/exit choice, and explicit exit waits for device restoration. A maximized window reserves the system's hidden border so content is not clipped.
+
+Reduced motion disables Ant Design motion and uses zero-duration CSS transitions. Assigning a nonzero transition to every element also animates floating-position measurement and can move Select popups outside the viewport. Browser checks cover the visible menu bounds and Escape dismissal. The offscreen WebView smoke harness could not open this popup reliably and is not used as evidence for that interaction.
+
+Validation evidence and remaining platform checks are recorded in [the UI validation report](./ui-validation-2026-10-24.md). Older design records below describe their original versions.
+
 ## Application icon — v0.4.1
 
 The approved Cinna artwork in `docs/brand/cinna-app-icon.png` is the source for the executable, native window, tray, installer, shortcuts, sidebar and favicon. The build exports transparent ICO frames from 16 to 256 pixels and copies the original PNG for the frontend. The native window and tray load the embedded ICO; frontend assets use content-based filenames. Packaging checks the source icon hash to reject stale frontend builds.

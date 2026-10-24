@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Runtime.Serialization.Json;
 using System.Security.Principal;
 using System.Threading;
@@ -12,13 +13,16 @@ using System.Windows;
 [assembly:AssemblyCompany("Cinna")]
 [assembly:AssemblyCopyright("Cinna")]
 [assembly:AssemblyDescription("Control supported CPU, case and GPU fans on Windows")]
-[assembly:AssemblyVersion("0.4.5.0")]
-[assembly:AssemblyFileVersion("0.4.5.0")]
+[assembly:AssemblyVersion("0.4.6.0")]
+[assembly:AssemblyFileVersion("0.4.6.0")]
 
 namespace CinnaFanCon
 {
     public static class AppProgram
     {
+        [DllImport("user32.dll",CharSet=CharSet.Unicode)]private static extern int RegisterWindowMessage(string name);
+        [DllImport("user32.dll",CharSet=CharSet.Unicode)]private static extern IntPtr FindWindow(string className,string windowName);
+        [DllImport("user32.dll")]private static extern IntPtr SendMessageTimeout(IntPtr handle,int message,IntPtr wParam,IntPtr lParam,uint flags,uint timeout,out IntPtr result);
         [STAThread]
         public static int Main(string[] args)
         {
@@ -37,14 +41,20 @@ namespace CinnaFanCon
                 }
                 bool smoke=args.Length>2&&args[0]=="--smoke";
                 capture=smoke?args[2]:args.Length>1&&args[0]=="--capture"?args[1]:null;
-                bool demo=smoke||args.Contains("--demo");
+                bool qa=args.Contains("--ui-qa");
+                bool demo=smoke||qa||args.Contains("--demo");
                 string sid;using(var identity=WindowsIdentity.GetCurrent())sid=identity.User.Value;
                 // Keep the established singleton name to prevent two versions controlling the same fans.
                 using(var mutex=new Mutex(false,@"Local\FanDesk.Main."+sid))
                 {
-                    bool entered=capture!=null;
+                    bool entered=capture!=null||qa;
                     if(!entered){try{entered=mutex.WaitOne(0);}catch(AbandonedMutexException){entered=true;}}
-                    if(!entered){MessageBox.Show("已有 FanController 或旧版应用正在运行。请从托盘打开，或退出后再启动此版本。","FanController");return 0;}
+                    if(!entered)
+                    {
+                        var existing=FindWindow(null,"FanController");IntPtr result;
+                        if(existing!=IntPtr.Zero&&SendMessageTimeout(existing,RegisterWindowMessage("CinnaFanCon.Restore"),IntPtr.Zero,IntPtr.Zero,2,1500,out result)!=IntPtr.Zero&&result==new IntPtr(1))return 0;
+                        MessageBox.Show("已有 FanController 或旧版应用正在运行。请从托盘打开，或退出后再启动此版本。","FanController");return 0;
+                    }
                     using(var installerGuard=new Mutex(false,@"Local\cinna-fanCon.Running"))
                     try
                     {
@@ -55,10 +65,10 @@ namespace CinnaFanCon
                         System.Windows.Forms.Application.EnableVisualStyles();
                         System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
                         var app=new Application {ShutdownMode=ShutdownMode.OnMainWindowClose};
-                        var window=new BrowserWindow(demo,capture,smoke?args[1]:null);
+                        var window=new BrowserWindow(demo,capture,smoke?args[1]:null,qa);
                         app.Run(window);return window.TestExitCode;
                     }
-                    finally{if(capture==null)mutex.ReleaseMutex();}
+                    finally{if(capture==null&&!qa)mutex.ReleaseMutex();}
                 }
             }
             catch(Exception error)

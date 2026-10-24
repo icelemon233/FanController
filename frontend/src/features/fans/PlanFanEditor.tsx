@@ -1,16 +1,5 @@
-import {
-  Alert,
-  Button,
-  Card,
-  Collapse,
-  Flex,
-  Form,
-  Input,
-  InputNumber,
-  Radio,
-  Select,
-  Typography,
-} from 'antd';
+import { Alert, Button, Card, Collapse, Flex, Form, Input, Radio, Select, Typography } from 'antd';
+import { NumberInput as InputNumber } from '../../components/NumberInput.tsx';
 import CurveEditor from './CurveEditor.tsx';
 import type { PlanEntry } from './coolingPlan.ts';
 import type { FanProfile, Snapshot } from './model.ts';

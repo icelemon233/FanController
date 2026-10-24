@@ -10,8 +10,8 @@ using System.Threading;
 [assembly:System.Reflection.AssemblyTitle("FanController Worker")]
 [assembly:System.Reflection.AssemblyProduct("FanController")]
 [assembly:System.Reflection.AssemblyCompany("Cinna")]
-[assembly:System.Reflection.AssemblyVersion("0.4.5.0")]
-[assembly:System.Reflection.AssemblyFileVersion("0.4.5.0")]
+[assembly:System.Reflection.AssemblyVersion("0.4.6.0")]
+[assembly:System.Reflection.AssemblyFileVersion("0.4.6.0")]
 
 namespace CinnaFanCon
 {
