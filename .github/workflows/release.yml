@@ -56,6 +56,9 @@ jobs:
           }
           ./scripts/test-installer-update.ps1 -Scenario Ready -Tray
           ./scripts/test-installer-update.ps1 -Scenario Ready -Legacy
+          foreach ($title in @('Older','Legacy')) {
+            ./scripts/test-installer-update.ps1 -Scenario Ready -Legacy -TitleVersion $title
+          }
       - name: Publish verified release files
         shell: pwsh
         env:

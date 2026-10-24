@@ -17,6 +17,7 @@ ShowInstDetails show
 !define RunningMutex "${FixtureMutex}"
 !define CurrentWindowTitle "${FixtureTitle}"
 !define PreviousWindowTitle "${FixtureTitle} previous"
+!define OlderWindowTitle "${FixtureTitle} older"
 !define LegacyWindowTitle "${FixtureTitle} legacy"
 !define CloseWaitChecks 10
 !include "${ProjectRoot}\installer\RunningApp.nsh"

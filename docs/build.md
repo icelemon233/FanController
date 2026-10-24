@@ -34,6 +34,19 @@ Setup uses `%LOCALAPPDATA%\Programs\cinna-fanCon`. Application and worker mutexe
 
 Installer source is in `installer/setup.nsi`. The approved icon is `docs/brand/cinna-app-icon.png`; `scripts/create-icon.ps1` creates the Windows ICO frames and synchronizes the frontend PNG. Code signing requires a signing certificate and is not configured in this repository.
 
+The same resource script exports the installer sidebar and header as RGB BMPs in `installer/assets`, with the source and output hashes recorded in `brand.json`. Installer builds regenerate them and check their source identity, pixel bounds and background. Welcome, finish and uninstall pages share these resources.
+
+To inspect the complete wizard without modifying an existing installation, build a separate QA installer:
+
+```powershell
+$fanQaRoot = Join-Path (Get-Location) ('work/installer-ui-qa-' + [Guid]::NewGuid().ToString('N'))
+./scripts/build-installer.ps1 -InstallerQaRoot $fanQaRoot
+# Optional English wizard, using the same isolated installation:
+./scripts/build-installer.ps1 -InstallerQaRoot $fanQaRoot -InstallerQaLanguage English
+```
+
+Open the generated QA installer in that directory. Its application files, registry record, shortcuts and mutexes are isolated at compile time; its launch options use `--ui-qa`, and it refuses to install a missing shared runtime. The production installer accepts no QA redirection flag. Keep personal files out of the QA directory and close any QA app normally before testing uninstall.
+
 To work on the frontend:
 
 ```powershell
@@ -77,6 +90,10 @@ Profiles are saved in `%LOCALAPPDATA%\cinna-fanCon\profiles.json`. If that file 
 应用安装到 `%LOCALAPPDATA%\Programs\cinna-fanCon`。交互式安装会提示关闭运行中的旧版；确认后通过正常退出流程恢复风扇，并等待主程序和服务结束，最长等待约 30 秒。退出失败时停止安装，程序文件不会被修改。静默安装和卸载仍会拒绝操作运行中的应用，安装期间也会阻止启动应用。卸载仅删除安装清单中的文件，再移除空目录；`%LOCALAPPDATA%\cinna-fanCon` 中的配置会保留。
 
 安装源码位于 `installer/setup.nsi`。应用图标统一源自 `docs/brand/cinna-app-icon.png`。构建时会运行 `scripts/create-icon.ps1`，生成包含 16–256 像素图层的 Windows ICO，并同步前端 PNG。窗口、托盘、安装程序和快捷方式使用同一图标；前端构建和打包会核对图片哈希。仓库尚未配置代码签名，签名需要相应证书。
+
+同一资源脚本还会导出 `installer/assets` 中的 RGB BMP 侧图和页头，并在 `brand.json` 记录母版与文件哈希。安装包构建会重新生成资源，校验来源、图像边界和背景色。欢迎、完成和卸载页面使用同一套品牌资源。
+
+上方 QA 安装包命令可验证完整向导，不修改日常安装。QA 的程序目录、注册项、快捷方式和互斥锁在编译时隔离，打开应用时使用 `--ui-qa`，缺少共享运行库时停止测试。正式安装包不接受 QA 重定向参数。QA 目录只放测试资料，卸载前正常退出其中的演示应用。
 
 前端开发使用上方 pnpm 命令。`check` 检查实际源码、测试与 Vite 配置，并运行模块边界、循环依赖、格式和行为测试。开发服务器可使用明确标注的演示设备；构建后的浏览器演示使用 `build:demo` 与 `preview:demo`，输出到独立目录。桌面生产包缺少原生桥接时显示错误，不自动回退为模拟设备。
 

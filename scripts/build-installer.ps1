@@ -1,7 +1,24 @@
-param([string]$CompilerPath)
+param(
+  [string]$CompilerPath,
+  [string]$InstallerQaRoot,
+  [ValidateSet('SimpChinese','English')][string]$InstallerQaLanguage='SimpChinese'
+)
 $ErrorActionPreference='Stop'
 $fanRoot=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $fanMetadata=Get-Content -LiteralPath (Join-Path $fanRoot 'version.json') -Raw | ConvertFrom-Json
+$fanQaArguments=@()
+if($InstallerQaRoot){
+  $InstallerQaRoot=[IO.Path]::GetFullPath($InstallerQaRoot)
+  $fanQaParent=Join-Path $fanRoot 'work'
+  $fanQaName=[IO.Path]::GetFileName($InstallerQaRoot)
+  if([IO.Path]::GetDirectoryName($InstallerQaRoot) -ne $fanQaParent -or $fanQaName -notmatch '^installer-ui-qa-([a-f0-9]{32})$'){
+    throw 'Installer UI QA must use a new work/installer-ui-qa-<GUID> directory inside this project.'
+  }
+  $fanQaId=$Matches[1]
+  $fanQaLanguage=if($InstallerQaLanguage -eq 'English'){1033}else{2052}
+  $fanQaArguments=@(('/DInstallerQaRoot='+$InstallerQaRoot),('/DInstallerQaId='+$fanQaId),('/DInstallerQaLanguage='+$fanQaLanguage))
+  New-Item -ItemType Directory -Force -Path $InstallerQaRoot | Out-Null
+}
 $fanDependencies=Get-Content -LiteralPath (Join-Path $PSScriptRoot 'dependencies.json') -Raw | ConvertFrom-Json
 $fanCache=Join-Path $fanRoot '.deps'
 New-Item -ItemType Directory -Force -Path $fanCache | Out-Null
@@ -37,6 +54,8 @@ $fanSignature=Get-AuthenticodeSignature -LiteralPath $fanBootstrapper
 if($fanSignature.Status -ne 'Valid' -or $fanSignature.SignerCertificate.Subject -notmatch 'Microsoft Corporation'){throw 'WebView2 bootstrapper signature verification failed.'}
 $fanApp=Join-Path $fanRoot 'artifacts\app\FanController.exe'
 if((Get-Item -LiteralPath $fanApp).VersionInfo.FileVersion -ne ($fanMetadata.version+'.0')){throw 'Build the app at the current version before creating the installer.'}
+& (Join-Path $PSScriptRoot 'create-icon.ps1') | Write-Host
+& (Join-Path $PSScriptRoot 'test-installer-branding.ps1') | Write-Host
 $fanArchive=& (Join-Path $PSScriptRoot 'package.ps1')
 $fanStage=Join-Path $fanRoot ('work\installer-'+[Guid]::NewGuid().ToString('N'))
 Expand-Archive -LiteralPath $fanArchive -DestinationPath $fanStage
@@ -56,7 +75,8 @@ foreach($fanDirectory in (Get-ChildItem -LiteralPath $fanStage -Directory -Recur
 $fanRemovalFile=Join-Path $fanRoot ('work\installer-removal-'+[Guid]::NewGuid().ToString('N')+'.nsh')
 [IO.File]::WriteAllLines($fanRemovalFile,$fanRemoval,[Text.UTF8Encoding]::new($false))
 $fanOutput=Join-Path $fanRoot ('dist\FanController-v'+$fanMetadata.version+'-windows-x64-setup.exe')
-$fanArguments=@('/V2','/INPUTCHARSET','UTF8',('/DProjectRoot='+$fanRoot),('/DAppVersion='+$fanMetadata.version),('/DPayload='+$fanStage),('/DBootstrapper='+$fanBootstrapper),('/DRemovalList='+$fanRemovalFile),('/DInstalledSizeKB='+[Math]::Ceiling($fanSize/1024)),('/DOutputFile='+$fanOutput),(Join-Path $fanRoot 'installer\setup.nsi'))
+if($InstallerQaRoot){$fanOutput=Join-Path $InstallerQaRoot ('FanController-v'+$fanMetadata.version+'-installer-ui-qa-'+$InstallerQaLanguage+'.exe')}
+$fanArguments=@('/V2','/INPUTCHARSET','UTF8',('/DProjectRoot='+$fanRoot),('/DAppVersion='+$fanMetadata.version),('/DPayload='+$fanStage),('/DBootstrapper='+$fanBootstrapper),('/DRemovalList='+$fanRemovalFile),('/DInstalledSizeKB='+[Math]::Ceiling($fanSize/1024)),('/DOutputFile='+$fanOutput))+$fanQaArguments+@((Join-Path $fanRoot 'installer\setup.nsi'))
 & $CompilerPath @fanArguments
 if($LASTEXITCODE -ne 0){throw 'NSIS installer compilation failed.'}
 $fanHash=(Get-FileHash -LiteralPath $fanOutput -Algorithm SHA256).Hash.ToLowerInvariant()

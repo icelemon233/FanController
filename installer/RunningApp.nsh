@@ -3,6 +3,9 @@
 !ifndef PreviousWindowTitle
   !define PreviousWindowTitle ""
 !endif
+!ifndef OlderWindowTitle
+  !define OlderWindowTitle ""
+!endif
 
 Var AppIsRunning
 Var AppWindow
@@ -32,6 +35,11 @@ Function ${Prefix}CheckRunning
   ${If} $AppWindow = 0
     ${If} "${PreviousWindowTitle}" != ""
       FindWindow $AppWindow "" "${PreviousWindowTitle}"
+    ${EndIf}
+  ${EndIf}
+  ${If} $AppWindow = 0
+    ${If} "${OlderWindowTitle}" != ""
+      FindWindow $AppWindow "" "${OlderWindowTitle}"
     ${EndIf}
   ${EndIf}
   ${If} $AppWindow = 0

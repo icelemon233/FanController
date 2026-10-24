@@ -4,7 +4,42 @@ $fanRoot=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $fanSource=Join-Path $fanRoot 'docs\brand\cinna-app-icon.png'
 $fanNativeFolder=Join-Path $fanRoot 'native\assets'
 $fanWebFolder=Join-Path $fanRoot 'frontend\src\assets'
-New-Item -ItemType Directory -Force -Path $fanNativeFolder,$fanWebFolder | Out-Null
+$fanInstallerFolder=Join-Path $fanRoot 'installer\assets'
+New-Item -ItemType Directory -Force -Path $fanNativeFolder,$fanWebFolder,$fanInstallerFolder | Out-Null
+
+function Write-FanInstallerBitmap {
+  param([Drawing.Image]$Source,[string]$Path,[int]$Width,[int]$Height,[int]$IconSize,[int]$Left,[int]$Top,[int]$Radius)
+  $canvas=[Drawing.Bitmap]::new($Width,$Height,[Drawing.Imaging.PixelFormat]::Format24bppRgb)
+  $canvasGraphics=[Drawing.Graphics]::FromImage($canvas)
+  $icon=[Drawing.Bitmap]::new($IconSize,$IconSize,[Drawing.Imaging.PixelFormat]::Format32bppArgb)
+  $iconGraphics=[Drawing.Graphics]::FromImage($icon)
+  $outline=[Drawing.Drawing2D.GraphicsPath]::new()
+  $attributes=[Drawing.Imaging.ImageAttributes]::new()
+  try {
+    $canvasGraphics.Clear([Drawing.Color]::FromArgb(255,252,246))
+    $iconGraphics.Clear([Drawing.Color]::Transparent)
+    $diameter=2*$Radius
+    $edge=$IconSize-1
+    $outline.AddArc(0,0,$diameter,$diameter,180,90)
+    $outline.AddArc(($edge-$diameter),0,$diameter,$diameter,270,90)
+    $outline.AddArc(($edge-$diameter),($edge-$diameter),$diameter,$diameter,0,90)
+    $outline.AddArc(0,($edge-$diameter),$diameter,$diameter,90,90)
+    $outline.CloseFigure()
+    $iconGraphics.SetClip($outline)
+    $iconGraphics.CompositingQuality=[Drawing.Drawing2D.CompositingQuality]::HighQuality
+    $iconGraphics.InterpolationMode=[Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+    $iconGraphics.PixelOffsetMode=[Drawing.Drawing2D.PixelOffsetMode]::HighQuality
+    $attributes.SetWrapMode([Drawing.Drawing2D.WrapMode]::TileFlipXY)
+    $iconGraphics.DrawImage($Source,[Drawing.Rectangle]::new(0,0,$IconSize,$IconSize),0,0,$Source.Width,$Source.Height,[Drawing.GraphicsUnit]::Pixel,$attributes)
+    $canvasGraphics.DrawImageUnscaled($icon,$Left,$Top)
+    $canvas.Save($Path,[Drawing.Imaging.ImageFormat]::Bmp)
+  } finally {$attributes.Dispose();$outline.Dispose();$iconGraphics.Dispose();$icon.Dispose();$canvasGraphics.Dispose();$canvas.Dispose()}
+}
+
+$fanInstallerImages=@(
+  [ordered]@{file='installer-sidebar.bmp';width=164;height=314;iconSize=148;left=8;top=58;radius=32},
+  [ordered]@{file='installer-header.bmp';width=150;height=57;iconSize=48;left=98;top=4;radius=11}
+)
 $fanImages=[Collections.Generic.List[byte[]]]::new()
 $fanSizes=@(16,20,24,32,40,48,64,96,128,256)
 $fanOriginal=[Drawing.Image]::FromFile($fanSource)
@@ -27,7 +62,20 @@ try {
       $fanImages.Add($fanStream.ToArray())
     } finally {$fanStream.Dispose();$fanAttributes.Dispose();$fanGraphics.Dispose();$fanBitmap.Dispose()}
   }
+  foreach($fanInstallerImage in $fanInstallerImages){
+    $fanInstallerPath=Join-Path $fanInstallerFolder $fanInstallerImage.file
+    Write-FanInstallerBitmap -Source $fanOriginal -Path $fanInstallerPath -Width $fanInstallerImage.width -Height $fanInstallerImage.height -IconSize $fanInstallerImage.iconSize -Left $fanInstallerImage.left -Top $fanInstallerImage.top -Radius $fanInstallerImage.radius
+    $fanInstallerImage.sha256=(Get-FileHash -LiteralPath $fanInstallerPath -Algorithm SHA256).Hash.ToLowerInvariant()
+  }
 } finally {$fanOriginal.Dispose()}
+$fanInstallerManifest=[ordered]@{
+  source='docs/brand/cinna-app-icon.png'
+  sourceSha256=(Get-FileHash -LiteralPath $fanSource -Algorithm SHA256).Hash.ToLowerInvariant()
+  background='#FFFCF6'
+  format='RGB BMP'
+  files=$fanInstallerImages
+}
+$fanInstallerManifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $fanInstallerFolder 'brand.json') -Encoding utf8NoBOM
 $fanFile=[IO.File]::Create((Join-Path $fanNativeFolder 'app.ico'))
 $fanWriter=[IO.BinaryWriter]::new($fanFile)
 try {
@@ -43,4 +91,4 @@ try {
   foreach($fanImage in $fanImages){$fanWriter.Write($fanImage)}
 } finally {$fanWriter.Dispose()}
 Copy-Item -LiteralPath $fanSource -Destination (Join-Path $fanWebFolder 'app-icon.png') -Force
-Write-Output ('Generated Cinna app icons: '+($fanSizes -join ', ')+' px; frontend PNG matches the source.')
+Write-Output ('Generated Cinna app icons: '+($fanSizes -join ', ')+' px, frontend PNG, and installer branding.')

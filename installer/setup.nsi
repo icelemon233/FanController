@@ -5,11 +5,12 @@ Unicode true
 !include "WinVer.nsh"
 !include "x64.nsh"
 !include "FileFunc.nsh"
+!include "${ProjectRoot}\installer\Locations.nsh"
 
-Name "FanController"
+Name "FanController ${AppVersion}"
 BrandingText "FanController"
 OutFile "${OutputFile}"
-InstallDir "$LOCALAPPDATA\Programs\cinna-fanCon"
+InstallDir "${FanInstallLocation}"
 RequestExecutionLevel user
 SetCompressor /SOLID lzma
 CRCCheck force
@@ -22,16 +23,22 @@ VIAddVersionKey /LANG=1033 "FileVersion" "${AppVersion}"
 VIAddVersionKey /LANG=1033 "LegalCopyright" "Cinna"
 VIAddVersionKey /LANG=1033 "CompanyName" "Cinna"
 
-!define UninstallKey "Software\Microsoft\Windows\CurrentVersion\Uninstall\cinna-fanCon"
 !define MUI_ICON "${ProjectRoot}\native\assets\app.ico"
 !define MUI_UNICON "${ProjectRoot}\native\assets\app.ico"
+!define MUI_HEADERIMAGE
+!define MUI_HEADERIMAGE_RIGHT
+!define MUI_HEADERIMAGE_BITMAP "${ProjectRoot}\installer\assets\installer-header.bmp"
+!define MUI_HEADERIMAGE_UNBITMAP "${ProjectRoot}\installer\assets\installer-header.bmp"
+!define MUI_WELCOMEFINISHPAGE_BITMAP "${ProjectRoot}\installer\assets\installer-sidebar.bmp"
+!define MUI_UNWELCOMEFINISHPAGE_BITMAP "${ProjectRoot}\installer\assets\installer-sidebar.bmp"
 !define MUI_ABORTWARNING
-!define MUI_WELCOMEPAGE_TITLE "FanController ${AppVersion}"
+!define MUI_WELCOMEPAGE_TITLE "$(WelcomeTitle)"
 !define MUI_WELCOMEPAGE_TEXT "$(WelcomeText)"
 !define MUI_FINISHPAGE_RUN "$INSTDIR\FanController.exe"
 !define MUI_FINISHPAGE_RUN_TEXT "$(OpenAfterInstall)"
 !define MUI_FINISHPAGE_RUN_FUNCTION OpenInstalledApp
 !insertmacro MUI_PAGE_WELCOME
+!define MUI_COMPONENTSPAGE_NODESC
 !insertmacro MUI_PAGE_COMPONENTS
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
@@ -40,6 +47,8 @@ VIAddVersionKey /LANG=1033 "CompanyName" "Cinna"
 !insertmacro MUI_LANGUAGE "SimpChinese"
 !insertmacro MUI_LANGUAGE "English"
 
+LangString WelcomeTitle ${LANG_SIMPCHINESE} "安装 FanController ${AppVersion}"
+LangString WelcomeTitle ${LANG_ENGLISH} "Install FanController ${AppVersion}"
 LangString WelcomeText ${LANG_SIMPCHINESE} "安装 FanController，为当前用户创建开始菜单入口和卸载程序。$\r$\n$\r$\n需要 Windows 10/11 x64 和 .NET Framework 4.8。缺少 WebView2 Runtime 时，安装程序会联网安装微软运行库。$\r$\n$\r$\n应用启动后不会自动接管风扇。主板访问权限在应用内设置。"
 LangString WelcomeText ${LANG_ENGLISH} "Install FanController for the current user, with a Start menu shortcut and an uninstaller.$\r$\n$\r$\nRequires Windows 10/11 x64 and .NET Framework 4.8. If WebView2 Runtime is missing, setup installs it from Microsoft using an internet connection.$\r$\n$\r$\nThe app does not take control of fans on startup. Motherboard access is configured in the app."
 LangString AppSection ${LANG_SIMPCHINESE} "FanController 应用（必选）"
@@ -72,10 +81,6 @@ LangString UpgradeFailed ${LANG_ENGLISH} "The previous version could not be unin
 Var SetupMutex
 Var RuntimeInstalled
 
-!define RunningMutex "Local\cinna-fanCon.Running"
-!define CurrentWindowTitle "FanController · 风扇控制"
-!define PreviousWindowTitle "cinna-fanCon · 风扇控制"
-!define LegacyWindowTitle "cinna-fanCon · 智能散热"
 !include "${ProjectRoot}\installer\RunningApp.nsh"
 !insertmacro RunningCheck "un."
 
@@ -84,7 +89,7 @@ Function ${Prefix}ValidateLocation
   SetShellVarContext current
   SetRegView 64
   GetFullPathName $0 "$INSTDIR"
-  GetFullPathName $1 "$LOCALAPPDATA\Programs\cinna-fanCon"
+  GetFullPathName $1 "${FanInstallLocation}"
   ${If} $0 != $1
     MessageBox MB_OK|MB_ICONSTOP "$(InvalidLocation)" /SD IDOK
     SetErrorLevel 11
@@ -107,8 +112,11 @@ FunctionEnd
 Function .onInit
   SetShellVarContext current
   StrCpy $LANGUAGE ${LANG_SIMPCHINESE}
-  StrCpy $INSTDIR "$LOCALAPPDATA\Programs\cinna-fanCon"
-  System::Call 'kernel32::CreateMutexW(p 0, i 0, w "Local\cinna-fanCon.Installing") p .r0 ?e'
+  !ifdef InstallerQaRoot
+    StrCpy $LANGUAGE ${InstallerQaLanguage}
+  !endif
+  StrCpy $INSTDIR "${FanInstallLocation}"
+  System::Call 'kernel32::CreateMutexW(p 0, i 0, w "${FanInstallingMutex}") p .r0 ?e'
   Pop $1
   StrCpy $SetupMutex $0
   ${If} $1 = 183
@@ -157,6 +165,12 @@ Section "$(AppSection)" Application
   Call PrepareForInstall
   Call DetectRuntime
   ${If} $RuntimeInstalled = 0
+    !ifdef InstallerQaRoot
+      ; UI QA never installs shared system dependencies.
+      MessageBox MB_OK|MB_ICONSTOP "$(NeedWebView)" /SD IDOK
+      SetErrorLevel 15
+      Quit
+    !else
     InitPluginsDir
     SetOutPath "$PLUGINSDIR"
     File /oname=MicrosoftEdgeWebview2Setup.exe "${Bootstrapper}"
@@ -167,6 +181,7 @@ Section "$(AppSection)" Application
       SetErrorLevel 15
       Quit
     ${EndIf}
+    !endif
   ${EndIf}
   ReadRegStr $0 HKCU "${UninstallKey}" "InstallLocation"
   ReadRegStr $2 HKCU "${UninstallKey}" "DisplayName"
@@ -199,9 +214,13 @@ Section "$(AppSection)" Application
   SetOutPath "$INSTDIR"
   File /r "${Payload}\*"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
-  CreateDirectory "$SMPROGRAMS\FanController"
-  CreateShortcut "$SMPROGRAMS\FanController\FanController.lnk" "$INSTDIR\FanController.exe" "" "$INSTDIR\FanController.exe" 0
-  CreateShortcut "$SMPROGRAMS\FanController\卸载 FanController.lnk" "$INSTDIR\Uninstall.exe" "" "$INSTDIR\Uninstall.exe" 0
+  CreateDirectory "${FanStartMenuLocation}"
+  !ifdef InstallerQaRoot
+    CreateShortcut "${FanStartMenuLocation}\FanController.lnk" "$INSTDIR\FanController.exe" "--ui-qa" "$INSTDIR\FanController.exe" 0
+  !else
+    CreateShortcut "${FanStartMenuLocation}\FanController.lnk" "$INSTDIR\FanController.exe" "" "$INSTDIR\FanController.exe" 0
+  !endif
+  CreateShortcut "${FanStartMenuLocation}\卸载 FanController.lnk" "$INSTDIR\Uninstall.exe" "" "$INSTDIR\Uninstall.exe" 0
   WriteRegStr HKCU "${UninstallKey}" "DisplayName" "FanController"
   WriteRegStr HKCU "${UninstallKey}" "DisplayVersion" "${AppVersion}"
   WriteRegStr HKCU "${UninstallKey}" "Publisher" "Cinna"
@@ -214,12 +233,17 @@ Section "$(AppSection)" Application
   WriteRegDWORD HKCU "${UninstallKey}" "NoRepair" 1
   WriteRegDWORD HKCU "${UninstallKey}" "EstimatedSize" ${InstalledSizeKB}
   System::Call 'shell32::SHChangeNotify(i 0x00002000, i 0x0005, w "$INSTDIR\FanController.exe", p 0)'
-  System::Call 'shell32::SHChangeNotify(i 0x00002000, i 0x0005, w "$SMPROGRAMS\FanController\FanController.lnk", p 0)'
+  System::Call 'shell32::SHChangeNotify(i 0x00002000, i 0x0005, w "${FanStartMenuLocation}\FanController.lnk", p 0)'
 SectionEnd
 
 Section "$(DesktopShortcut)" Desktop
-  CreateShortcut "$DESKTOP\FanController.lnk" "$INSTDIR\FanController.exe" "" "$INSTDIR\FanController.exe" 0
-  System::Call 'shell32::SHChangeNotify(i 0x00002000, i 0x0005, w "$DESKTOP\FanController.lnk", p 0)'
+  !ifdef InstallerQaRoot
+    CreateDirectory "${InstallerQaRoot}\desktop"
+    CreateShortcut "${FanDesktopShortcut}" "$INSTDIR\FanController.exe" "--ui-qa" "$INSTDIR\FanController.exe" 0
+  !else
+    CreateShortcut "${FanDesktopShortcut}" "$INSTDIR\FanController.exe" "" "$INSTDIR\FanController.exe" 0
+  !endif
+  System::Call 'shell32::SHChangeNotify(i 0x00002000, i 0x0005, w "${FanDesktopShortcut}", p 0)'
 SectionEnd
 
 Function OpenInstalledApp
@@ -228,13 +252,20 @@ Function OpenInstalledApp
     System::Call 'kernel32::CloseHandle(p $SetupMutex)'
     StrCpy $SetupMutex 0
   ${EndIf}
-  Exec '$\"$INSTDIR\FanController.exe$\"'
+  !ifdef InstallerQaRoot
+    Exec '$\"$INSTDIR\FanController.exe$\" --ui-qa'
+  !else
+    Exec '$\"$INSTDIR\FanController.exe$\"'
+  !endif
 FunctionEnd
 
 Function un.onInit
+  !ifdef InstallerQaRoot
+    StrCpy $LANGUAGE ${InstallerQaLanguage}
+  !endif
   Call un.Guard
   ; Only an explicit upgrade may share the parent installer's mutex.
-  System::Call 'kernel32::CreateMutexW(p 0, i 0, w "Local\cinna-fanCon.Installing") p .r0 ?e'
+  System::Call 'kernel32::CreateMutexW(p 0, i 0, w "${FanInstallingMutex}") p .r0 ?e'
   Pop $1
   StrCpy $SetupMutex $0
   ${If} $1 = 183
@@ -254,10 +285,10 @@ Section "Uninstall"
   SetOutPath "$TEMP"
   !include "${RemovalList}"
   Delete "$INSTDIR\Uninstall.exe"
-  Delete "$DESKTOP\FanController.lnk"
-  Delete "$SMPROGRAMS\FanController\FanController.lnk"
-  Delete "$SMPROGRAMS\FanController\卸载 FanController.lnk"
-  RMDir "$SMPROGRAMS\FanController"
+  Delete "${FanDesktopShortcut}"
+  Delete "${FanStartMenuLocation}\FanController.lnk"
+  Delete "${FanStartMenuLocation}\卸载 FanController.lnk"
+  RMDir "${FanStartMenuLocation}"
   DeleteRegKey HKCU "${UninstallKey}"
   RMDir "$INSTDIR"
 SectionEnd

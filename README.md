@@ -6,7 +6,7 @@
 
 A Windows application that adjusts supported CPU, case and GPU fans by temperature. Build a quiet-first control plan, review each fan’s settings, then apply it. Temperature curves and fixed output remain editable per fan group.
 
-[Download the Windows installer](https://github.com/icelemon233/FanController/releases/download/v0.4.6/FanController-v0.4.6-windows-x64-setup.exe) · [Portable ZIP](https://github.com/icelemon233/FanController/releases/tag/v0.4.6) · [Build from source](./docs/build.md)
+[Download the Windows installer](https://github.com/icelemon233/FanController/releases/download/v0.4.7/FanController-v0.4.7-windows-x64-setup.exe) · [Portable ZIP](https://github.com/icelemon233/FanController/releases/tag/v0.4.7) · [Build from source](./docs/build.md)
 
 <img src="./docs/images/overview.png" alt="FanController overview in demo mode with simulated temperature and fan readings" width="960" />
 

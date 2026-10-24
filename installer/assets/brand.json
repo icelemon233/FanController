@@ -1,0 +1,28 @@
+{
+  "source": "docs/brand/cinna-app-icon.png",
+  "sourceSha256": "c589e26d15d9f1b635db3a7af042e23b5692bae1181af9de0301df9332a3d9eb",
+  "background": "#FFFCF6",
+  "format": "RGB BMP",
+  "files": [
+    {
+      "file": "installer-sidebar.bmp",
+      "width": 164,
+      "height": 314,
+      "iconSize": 148,
+      "left": 8,
+      "top": 58,
+      "radius": 32,
+      "sha256": "4ad441d85982799f5ae1ef1ef027dcf922812d7bf7961e3f440da4893ca5bdc4"
+    },
+    {
+      "file": "installer-header.bmp",
+      "width": 150,
+      "height": 57,
+      "iconSize": 48,
+      "left": 98,
+      "top": 4,
+      "radius": 11,
+      "sha256": "130b827608de30586ab9b4c23d4c2369de8d161992dfa49b28f3e9b1f805e6b5"
+    }
+  ]
+}

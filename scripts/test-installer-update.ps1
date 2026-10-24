@@ -1,4 +1,8 @@
-param([ValidateSet('Ready','Refuse','WrongPath','Silent','Idle')][string]$Scenario='Ready',[switch]$Legacy,[switch]$Tray)
+param(
+  [ValidateSet('Ready','Refuse','WrongPath','Silent','Idle')][string]$Scenario='Ready',
+  [switch]$Legacy,[switch]$Tray,
+  [ValidateSet('Current','Previous','Older','Legacy')][string]$TitleVersion='Current'
+)
 $ErrorActionPreference='Stop'
 $fanRoot=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $fanId=[Guid]::NewGuid().ToString('N')
@@ -8,7 +12,8 @@ $fanMutex='Local\FanController.UpdateTest.'+$fanId
 $fanTitle='FanController update test '+$fanId
 $fanCompiler=Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
 $fanMock=Join-Path $fanFixture $(if($Legacy){'cinna-fanCon.exe'}else{'FanController.exe'})
-$fanRunningTitle=if($Legacy){$fanTitle+' previous'}else{$fanTitle}
+$fanTitleVersion=if($Legacy -and $TitleVersion -eq 'Current'){'Previous'}else{$TitleVersion}
+$fanRunningTitle=if($fanTitleVersion -eq 'Current'){$fanTitle}else{$fanTitle+' '+$fanTitleVersion.ToLowerInvariant()}
 & $fanCompiler /nologo /target:winexe /platform:x64 /r:System.Windows.Forms.dll /r:System.Drawing.dll ('/out:'+$fanMock) (Join-Path $fanRoot 'installer\tests\UpdateFixture.cs')
 if($LASTEXITCODE -ne 0){throw 'Update fixture compilation failed.'}
 $fanMessages=Get-Content -LiteralPath (Join-Path $fanRoot 'installer\setup.nsi') | Where-Object {$_ -match '^LangString (CloseAppPrompt|ClosingApp|CloseAppFailed) '}
@@ -46,10 +51,10 @@ try {
     if($Scenario -eq 'Refuse' -and ($fanEvents -join ',') -ne $fanExitEvent){throw 'The refusal scenario did not request normal shutdown.'}
     if($Scenario -ne 'Refuse' -and $fanEvents.Count -ne 0){throw 'Setup closed an app in silent mode or from another installation.'}
   }
-  $fanResult='PASS: '+$Scenario+'; '+$(if($Legacy){'legacy close'}else{'explicit tray exit'})+'; '+$(if($Tray){'hidden window'}else{'normal window'})+'; isolated update guard preserved shutdown ordering and program files'
+  $fanResult='PASS: '+$Scenario+'; '+$(if($Legacy){'legacy close'}else{'explicit tray exit'})+'; '+$(if($Tray){'hidden window'}else{'normal window'})+'; '+$fanTitleVersion+' title; isolated update guard preserved shutdown ordering and program files'
   $fanReports=Join-Path $fanRoot 'artifacts\tests'
   New-Item -ItemType Directory -Force -Path $fanReports | Out-Null
-  $fanResult | Set-Content -LiteralPath (Join-Path $fanReports ('installer-update-'+$Scenario+$(if($Legacy){'-legacy'}else{''})+$(if($Tray){'-tray'}else{''})+'.txt')) -Encoding utf8
+  $fanResult | Set-Content -LiteralPath (Join-Path $fanReports ('installer-update-'+$Scenario+$(if($Legacy){'-legacy'}else{''})+$(if($Tray){'-tray'}else{''})+$(if($TitleVersion -ne 'Current'){'-'+$TitleVersion.ToLowerInvariant()}else{''})+'.txt')) -Encoding utf8
   Write-Output $fanResult
 }finally{
   [IO.File]::WriteAllText((Join-Path $fanFixture 'cleanup.txt'),'cleanup')
