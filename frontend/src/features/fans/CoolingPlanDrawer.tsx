@@ -1,4 +1,3 @@
-import { CheckOutlined, EditOutlined, EyeOutlined } from '@ant-design/icons';
 import {
   Alert,
   Button,
@@ -14,6 +13,7 @@ import {
   Tag,
   Typography,
 } from 'antd';
+import { Check, Eye, Pencil } from 'lucide-react';
 import { useState } from 'react';
 import { useDraftClose } from '../../components/useDraftClose.ts';
 import {
@@ -116,9 +116,7 @@ export default function CoolingPlanDrawer({
             <Button
               type="primary"
               data-testid={reviewed ? 'apply-plan' : 'review-plan'}
-              icon={
-                reviewed ? <CheckOutlined aria-hidden="true" /> : <EyeOutlined aria-hidden="true" />
-              }
+              icon={reviewed ? <Check aria-hidden="true" /> : <Eye aria-hidden="true" />}
               loading={busy}
               disabled={busy || !connected || Boolean(error)}
               onClick={async () => {
@@ -258,7 +256,7 @@ export default function CoolingPlanDrawer({
                           <Button
                             type="text"
                             size="small"
-                            icon={<EditOutlined aria-hidden="true" />}
+                            icon={<Pencil aria-hidden="true" />}
                             aria-label={`编辑${entry.profile.Name}`}
                             data-testid={`plan-edit-${entry.profile.Id}`}
                             disabled={busy}

@@ -140,6 +140,11 @@ export function parseHostEvent(value: unknown): FanEvent | Reply | undefined {
   }
   if (value.Type === 'window' && typeof value.Maximized === 'boolean') return undefined;
   if (
+    value.Type === 'caption-hover' &&
+    ['none', 'minimize', 'maximize', 'close'].includes(String(value.Message))
+  )
+    return undefined;
+  if (
     value.Type === 'window-state' &&
     (value.Message === 'normal' || value.Message === 'maximized')
   )

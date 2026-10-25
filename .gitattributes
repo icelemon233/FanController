@@ -9,3 +9,6 @@
 *.ico binary
 # Keep the upstream license's original line endings and whitespace.
 third-party/NSIS-LICENSE.txt -text -whitespace
+
+# Retain verbatim third-party license formatting.
+installer/inno/licenses/** -whitespace

@@ -63,3 +63,9 @@ jobs:
             ./scripts/test-installer-update.ps1 -Scenario Ready -Legacy -TitleVersion $title
           }
         shell: pwsh
+      - name: Test isolated Inno installation and uninstall
+        run: ./scripts/test-installer.ps1
+        shell: pwsh
+      - name: Test custom native interface and upgrade recovery
+        run: ./installer/inno/test-custom.ps1 -PayloadDirectory artifacts/app -Version ((Get-Content version.json -Raw | ConvertFrom-Json).version)
+        shell: pwsh

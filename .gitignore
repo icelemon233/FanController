@@ -1,5 +1,6 @@
 # Build outputs and downloaded dependencies
 /.deps/
+/.installer-build/
 /artifacts/
 /dist/
 /work/

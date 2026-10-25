@@ -1,10 +1,5 @@
-import {
-  ControlOutlined,
-  DesktopOutlined,
-  FundProjectionScreenOutlined,
-  SafetyCertificateOutlined,
-} from '@ant-design/icons';
 import { Button, Card, Descriptions, Flex, Space, Statistic, Tag, Typography, theme } from 'antd';
+import { ChartNoAxesCombined, Monitor, ShieldCheck, SlidersHorizontal } from 'lucide-react';
 import { lazy, Suspense, useRef, useState } from 'react';
 import { FanIcon } from '../../components/FanIcon.tsx';
 import ActiveFanSettings from './ActiveFanSettings.tsx';
@@ -147,7 +142,7 @@ export default function FanOverview({ onDevices }: { onDevices: () => void }) {
             <Button
               data-testid="configure-plan"
               type="primary"
-              icon={<ControlOutlined aria-hidden="true" />}
+              icon={<SlidersHorizontal aria-hidden="true" />}
               disabled={Boolean(busy) || stale || !channels.length}
               onClick={() => setPlanSession(++sequence.current)}
             >
@@ -182,7 +177,7 @@ export default function FanOverview({ onDevices }: { onDevices: () => void }) {
         )}
         <Flex className="protection-note" justify="space-between" gap={16} wrap>
           <Space>
-            <SafetyCertificateOutlined aria-hidden="true" />
+            <ShieldCheck aria-hidden="true" />
             <Text type="secondary">高温或必要温度失效时，已接管风扇立即设为最高输出。</Text>
           </Space>
           <Button type="link" size="small" onClick={() => onDevices()}>
@@ -210,13 +205,13 @@ export default function FanOverview({ onDevices }: { onDevices: () => void }) {
           {
             group: 'GPU',
             title: '显卡风扇',
-            icon: <FundProjectionScreenOutlined aria-hidden="true" />,
+            icon: <ChartNoAxesCombined aria-hidden="true" />,
             device: fallbackGpu,
           },
           {
             group: '主板',
             title: 'CPU 与机箱风扇',
-            icon: <DesktopOutlined aria-hidden="true" />,
+            icon: <Monitor aria-hidden="true" />,
             device: frame?.Board,
           },
         ].map((device) => {

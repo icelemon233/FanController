@@ -1,62 +1,76 @@
 param(
   [ValidateSet('Ready','Refuse','WrongPath','Silent','Idle')][string]$Scenario='Ready',
-  [switch]$Legacy,[switch]$Tray,
-  [ValidateSet('Current','Previous','Older','Legacy')][string]$TitleVersion='Current'
+  [switch]$Legacy,
+  [switch]$Tray,
+  [ValidateSet('Current','Previous','Older','Legacy')][string]$TitleVersion='Current',
+  [string]$CompilerPath=$env:INNOSETUP_ISCC
 )
 $ErrorActionPreference='Stop'
 $fanRoot=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+$fanVersion=(Get-Content -LiteralPath (Join-Path $fanRoot 'version.json') -Raw | ConvertFrom-Json).version
 $fanId=[Guid]::NewGuid().ToString('N')
-$fanFixture=Join-Path $fanRoot ('work\update-test-'+$fanId)
-New-Item -ItemType Directory -Path $fanFixture | Out-Null
-$fanMutex='Local\FanController.UpdateTest.'+$fanId
-$fanTitle='FanController update test '+$fanId
+$fanQaRoot=Join-Path $fanRoot ('work\inno-qa-'+$fanId)
+$fanSource=Join-Path $fanQaRoot 'payload'
+$fanInstall=Join-Path $fanQaRoot 'app'
+$fanRunningRoot=if($Scenario -eq 'WrongPath'){Join-Path $fanQaRoot 'other-installation'}else{$fanInstall}
+New-Item -ItemType Directory -Path $fanSource,$fanInstall,$fanRunningRoot -Force | Out-Null
+$fanMutex='Local\Cinna.InstallerQA.'+$fanId+'.Running'
+$fanTitle='FanController Installer QA '+$fanId
+$fanTitleVariant=if($Legacy -and $TitleVersion -eq 'Current'){'Previous'}else{$TitleVersion}
+$fanRunningTitle=if($fanTitleVariant -eq 'Current'){$fanTitle}else{$fanTitle+' '+$fanTitleVariant.ToLowerInvariant()}
 $fanCompiler=Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
-$fanMock=Join-Path $fanFixture $(if($Legacy){'cinna-fanCon.exe'}else{'FanController.exe'})
-$fanTitleVersion=if($Legacy -and $TitleVersion -eq 'Current'){'Previous'}else{$TitleVersion}
-$fanRunningTitle=if($fanTitleVersion -eq 'Current'){$fanTitle}else{$fanTitle+' '+$fanTitleVersion.ToLowerInvariant()}
-& $fanCompiler /nologo /target:winexe /platform:x64 /r:System.Windows.Forms.dll /r:System.Drawing.dll ('/out:'+$fanMock) (Join-Path $fanRoot 'installer\tests\UpdateFixture.cs')
+$fanVersionSource=Join-Path $fanQaRoot 'Version.cs'
+[IO.File]::WriteAllText($fanVersionSource,('[assembly:System.Reflection.AssemblyVersion("'+$fanVersion+'.0")][assembly:System.Reflection.AssemblyFileVersion("'+$fanVersion+'.0")]'))
+& $fanCompiler /nologo /target:winexe /platform:x64 /r:System.Windows.Forms.dll /r:System.Drawing.dll ('/out:'+(Join-Path $fanSource 'FanController.exe')) (Join-Path $fanRoot 'installer\tests\UpdateFixture.cs') $fanVersionSource
 if($LASTEXITCODE -ne 0){throw 'Update fixture compilation failed.'}
-$fanMessages=Get-Content -LiteralPath (Join-Path $fanRoot 'installer\setup.nsi') | Where-Object {$_ -match '^LangString (CloseAppPrompt|ClosingApp|CloseAppFailed) '}
-[IO.File]::WriteAllLines((Join-Path $fanFixture 'messages.nsh'),$fanMessages,[Text.UTF8Encoding]::new($false))
-$fanExpected=if($Scenario -eq 'WrongPath'){Join-Path $fanFixture 'other-installation'}else{$fanFixture}
-& (Join-Path $fanRoot '.deps\nsis-3.13\makensis.exe') /V2 /INPUTCHARSET UTF8 ('/DProjectRoot='+$fanRoot) ('/DFixtureRoot='+$fanFixture) ('/DExpectedRoot='+$fanExpected) ('/DFixtureMutex='+$fanMutex) ('/DFixtureTitle='+$fanTitle) ('/DFixtureScenario='+$Scenario) (Join-Path $fanRoot 'installer\tests\update-fixture.nsi')
-if($LASTEXITCODE -ne 0){throw 'Update test installer compilation failed.'}
+$fanFixtureName=if($Legacy){'cinna-fanCon.exe'}else{'FanController.exe'}
+$fanFixture=Join-Path $fanRunningRoot $fanFixtureName
+Copy-Item -LiteralPath (Join-Path $fanSource 'FanController.exe') -Destination $fanFixture
+$fanLegacyKey='Software\Cinna\InstallerQA\'+$fanId+'\Legacy'
+$fanRegistration=[Microsoft.Win32.Registry]::CurrentUser.CreateSubKey($fanLegacyKey)
+try{$fanRegistration.SetValue('InstallLocation',$fanInstall)}finally{$fanRegistration.Dispose()}
+$fanSetup=Join-Path $fanQaRoot 'FanController-lifecycle-qa.exe'
+& (Join-Path $fanRoot 'installer\inno\build.ps1') -PayloadDirectory $fanSource -Version $fanVersion -OutputFile $fanSetup -CompilerPath $CompilerPath -QaRoot $fanQaRoot | Write-Host
 $fanApp=$null
-try {
+try{
   if($Scenario -ne 'Idle'){
     $fanMode=if($Scenario -eq 'Refuse'){'Refuse'}else{'Ready'}
     $fanProtocol=if($Legacy){'LegacyClose'}else{'TrayClose'}
     $fanWindowMode=if($Tray){'Hidden'}else{'Window'}
-    $fanApp=Start-Process -FilePath $fanMock -ArgumentList @($fanMode,$fanMutex,('"'+$fanRunningTitle+'"'),$fanProtocol,$fanWindowMode) -WindowStyle Hidden -PassThru
-    $fanDeadline=[DateTime]::UtcNow.AddSeconds(10)
-    while(-not (Test-Path -LiteralPath (Join-Path $fanFixture 'app-ready.txt')) -or -not (Test-Path -LiteralPath (Join-Path $fanFixture 'worker-ready.txt'))){
+    $fanApp=Start-Process -FilePath $fanFixture -ArgumentList @($fanMode,$fanMutex,('"'+$fanRunningTitle+'"'),$fanProtocol,$fanWindowMode) -WindowStyle Hidden -PassThru
+    $fanDeadline=[DateTime]::UtcNow.AddSeconds(15)
+    while(-not (Test-Path -LiteralPath (Join-Path $fanRunningRoot 'app-ready.txt')) -or -not (Test-Path -LiteralPath (Join-Path $fanRunningRoot 'worker-ready.txt'))){
       if([DateTime]::UtcNow -gt $fanDeadline){throw 'Fake app or worker did not initialize.'}
       Start-Sleep -Milliseconds 100
     }
   }
-  $fanSetupArgs=if($Scenario -eq 'Silent'){@('/S')}else{@()}
-  $fanSetup=Start-Process -FilePath (Join-Path $fanFixture 'update-test.exe') -ArgumentList $fanSetupArgs -WindowStyle Hidden -PassThru
-  Write-Output ('Scenario: '+$Scenario+'; test setup PID: '+$fanSetup.Id)
-  Write-Output ('Fixture: '+$fanFixture)
-  if(-not $fanSetup.WaitForExit(15000)){throw 'The test installer did not complete within fifteen seconds.'}
-  $fanReady=Test-Path -LiteralPath (Join-Path $fanFixture 'ready.txt')
-  $fanExitEvent=if($Legacy){'close-requested'}else{'exit-requested'}
-  $fanEvents=if(Test-Path -LiteralPath (Join-Path $fanFixture 'events.txt')){@(Get-Content -LiteralPath (Join-Path $fanFixture 'events.txt'))}else{@()}
+  $fanArgs=@('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CURRENTUSER',('/DIR="'+$fanInstall+'"'),('/LOG="'+(Join-Path $fanQaRoot 'lifecycle.log')+'"'))
+  if($Scenario -ne 'Silent'){$fanArgs+='/CLOSEAPP'}
+  $fanProcess=Start-Process -FilePath $fanSetup -ArgumentList $fanArgs -WindowStyle Hidden -PassThru
+  if(-not $fanProcess.WaitForExit(90000)){throw 'Lifecycle test setup timed out.'}
+  $fanEventsFile=Join-Path $fanRunningRoot 'events.txt'
+  $fanEvents=if(Test-Path -LiteralPath $fanEventsFile){[IO.File]::ReadAllText($fanEventsFile).Trim()}else{''}
   if($Scenario -in @('Ready','Idle')){
-    if($fanSetup.ExitCode -ne 0 -or -not $fanReady){throw 'Setup did not continue after safe shutdown.'}
-    if($Scenario -eq 'Ready' -and (($fanEvents -join ',') -ne ($fanExitEvent+',worker-restored,host-exit') -or -not $fanApp.HasExited)){throw 'Setup continued before both the fake app and worker exited.'}
+    if($fanProcess.ExitCode -ne 0){throw "Setup failed: $($fanProcess.ExitCode). Inspect $fanQaRoot"}
+    if($Scenario -eq 'Ready'){
+      $fanExitEvent=if($Legacy){'close-requested'}else{'exit-requested'}
+      if(-not $fanApp.HasExited -or ($fanEvents -replace '\r?\n',',') -ne ($fanExitEvent+',worker-restored,host-exit')){throw 'Setup continued before normal fan restoration and host exit.'}
+    }
   }else{
-    if($fanSetup.ExitCode -ne 10 -or $fanReady){throw 'Setup continued after cancellation or an unsafe shutdown.'}
-    if($fanApp.HasExited){throw 'The test app was forcefully stopped.'}
-    if($Scenario -eq 'Refuse' -and ($fanEvents -join ',') -ne $fanExitEvent){throw 'The refusal scenario did not request normal shutdown.'}
-    if($Scenario -ne 'Refuse' -and $fanEvents.Count -ne 0){throw 'Setup closed an app in silent mode or from another installation.'}
+    if($fanProcess.ExitCode -eq 0){throw 'Unsafe shutdown did not stop setup.'}
+    if($fanApp.HasExited){throw 'The running fixture was terminated.'}
+    if(Test-Path -LiteralPath (Join-Path $fanInstall 'unins000.exe')){throw 'The refused operation installed files.'}
   }
-  $fanResult='PASS: '+$Scenario+'; '+$(if($Legacy){'legacy close'}else{'explicit tray exit'})+'; '+$(if($Tray){'hidden window'}else{'normal window'})+'; '+$fanTitleVersion+' title; isolated update guard preserved shutdown ordering and program files'
-  $fanReports=Join-Path $fanRoot 'artifacts\tests'
-  New-Item -ItemType Directory -Force -Path $fanReports | Out-Null
-  $fanResult | Set-Content -LiteralPath (Join-Path $fanReports ('installer-update-'+$Scenario+$(if($Legacy){'-legacy'}else{''})+$(if($Tray){'-tray'}else{''})+$(if($TitleVersion -ne 'Current'){'-'+$TitleVersion.ToLowerInvariant()}else{''})+'.txt')) -Encoding utf8
-  Write-Output $fanResult
+  Write-Output ('PASS Inno lifecycle: '+$Scenario+'; legacy='+$Legacy+'; tray='+$Tray+'; title='+$fanTitleVariant+'; '+$fanQaRoot)
 }finally{
-  [IO.File]::WriteAllText((Join-Path $fanFixture 'cleanup.txt'),'cleanup')
-  if($fanApp -and -not $fanApp.HasExited){if(-not $fanApp.WaitForExit(10000)){throw 'The isolated fake app did not respond to test cleanup.'}}
+  if($fanApp -and -not $fanApp.HasExited){
+    [IO.File]::WriteAllText((Join-Path $fanRunningRoot 'cleanup.txt'),'test cleanup')
+    if(-not $fanApp.WaitForExit(10000)){throw 'QA fixture did not exit after its cleanup signal.'}
+  }
+  $fanQaUninstaller=Join-Path $fanInstall 'unins000.exe'
+  if((Test-Path -LiteralPath $fanQaUninstaller) -and $fanProcess -and $fanProcess.HasExited){
+    $fanRemoval=Start-Process -FilePath $fanQaUninstaller -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',('/LOG="'+(Join-Path $fanQaRoot 'cleanup-uninstall.log')+'"')) -WindowStyle Hidden -PassThru
+    if(-not $fanRemoval.WaitForExit(30000) -or $fanRemoval.ExitCode -ne 0){throw 'The isolated lifecycle test installation could not be removed.'}
+  }
+  [Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree(('Software\Cinna\InstallerQA\'+$fanId),$false)
 }

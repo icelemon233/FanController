@@ -1,0 +1,32 @@
+{
+  "product": "FanController",
+  "kind": "fan",
+  "edition": "2026-10",
+  "origin": "Cinna installer scenes, generated from the approved character and composition references",
+  "files": [
+    {
+      "path": "source-day.png",
+      "width": 1610,
+      "height": 977,
+      "sha256": "bc4646fe150ace9f9470f0d90012e4aa88bdb3bcb7673afd6987383c8e51399d"
+    },
+    {
+      "path": "scene-day.jpg",
+      "width": 1610,
+      "height": 977,
+      "sha256": "83f0ea6950d52b6c582e03526e72ddbd9d27beec8cffd7210e2818231c05c772"
+    },
+    {
+      "path": "source-night.png",
+      "width": 1610,
+      "height": 977,
+      "sha256": "a5dccb69fffb69202efd9aa747129dce012c6b9898318182ec32963985048064"
+    },
+    {
+      "path": "scene-night.jpg",
+      "width": 1610,
+      "height": 977,
+      "sha256": "100f0cebecfef91e9e0fa004cd06cf9d40ad9de02163907d0e73b97ad74ddf32"
+    }
+  ]
+}

@@ -1,16 +1,19 @@
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shell;
+using System.Windows.Threading;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using Microsoft.Win32;
@@ -22,20 +25,37 @@ namespace CinnaFanCon
     {
         [DllImport("user32.dll")]private static extern bool ReleaseCapture();
         [DllImport("user32.dll")]private static extern IntPtr SendMessage(IntPtr handle,int message,IntPtr wParam,IntPtr lParam);
+        [DllImport("user32.dll",CharSet=CharSet.Unicode)]private static extern IntPtr DefWindowProc(IntPtr handle,int message,IntPtr wParam,IntPtr lParam);
+        [DllImport("user32.dll")]private static extern bool TrackMouseEvent(ref MouseTracking value);
         [DllImport("user32.dll")]private static extern short GetAsyncKeyState(int key);
         [DllImport("user32.dll")]private static extern bool GetCursorPos(out ScreenPoint point);
         [DllImport("user32.dll")]private static extern bool GetWindowRect(IntPtr handle,out ScreenRect bounds);
         [DllImport("user32.dll")]private static extern uint GetDpiForWindow(IntPtr handle);
         [DllImport("user32.dll",CharSet=CharSet.Unicode)]private static extern int RegisterWindowMessage(string name);
         [DllImport("dwmapi.dll")]private static extern int DwmSetWindowAttribute(IntPtr window,int attribute,ref int value,int size);
+        [DllImport("dwmapi.dll")]private static extern int DwmGetWindowAttribute(IntPtr window,int attribute,out int value,int size);
+        [DllImport("dwmapi.dll",EntryPoint="DwmGetWindowAttribute")]private static extern int DwmGetWindowAttributeRect(IntPtr window,int attribute,out ScreenRect value,int size);
+        [DllImport("user32.dll")]private static extern bool ClientToScreen(IntPtr window,ref ScreenPoint point);
+        [DllImport("user32.dll",EntryPoint="GetWindowLongPtrW")]private static extern IntPtr GetWindowLongPtr(IntPtr window,int index);
+        [DllImport("user32.dll")]private static extern int GetWindowRgn(IntPtr window,IntPtr region);
+        [DllImport("gdi32.dll")]private static extern IntPtr CreateRectRgn(int left,int top,int right,int bottom);
+        [DllImport("gdi32.dll")]private static extern bool DeleteObject(IntPtr value);
         [StructLayout(LayoutKind.Sequential)]private struct ScreenPoint {public int X,Y;}
         [StructLayout(LayoutKind.Sequential)]private struct ScreenRect {public int Left,Top,Right,Bottom;}
+        [StructLayout(LayoutKind.Sequential)]private struct MouseTracking {public int Size;public uint Flags;public IntPtr Window;public uint HoverTime;}
         private const string Origin="https://cinna-fancon.example";
         private static readonly int RequestExitMessage=RegisterWindowMessage("CinnaFanCon.RequestExit");
         private static readonly int RestoreMessage=RegisterWindowMessage("CinnaFanCon.Restore");
-        private readonly WebView2 browser=new WebView2();
+        // Composition hosting keeps child HWNDs from masking the host's
+        // non-client hit tests for custom caption buttons and resize borders.
+        private readonly WebView2CompositionControl browser=new WebView2CompositionControl();
+        private readonly WindowFrameContract frameContract=WindowFrameContract.Load();
+        private string captionHover="none";
         private readonly bool demo;
         private readonly bool isolatedQa;
+        private readonly UiQaOptions qaLaunch;
+        private DispatcherTimer qaMetricsTimer;
+        private bool qaReporting;
         private readonly string capturePath,smokeReport;
         private WorkerClient worker;
         private Forms.NotifyIcon tray;
@@ -54,9 +74,10 @@ namespace CinnaFanCon
         private static string ClosePreferenceFile {get{return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"cinna-fanCon","close.preference");}}
         public int TestExitCode;
 
-        public BrowserWindow(bool demonstration,string capture,string smoke,bool qa=false)
+        public BrowserWindow(bool demonstration,string capture,string smoke,bool qa=false,UiQaOptions qaOptions=null)
         {
             demo=demonstration;capturePath=capture;smokeReport=smoke;isolatedQa=qa;
+            qaLaunch=qa?qaOptions??UiQaOptions.Parse(new[]{"--ui-qa"}):null;
             if(!demo&&capturePath==null)try{if(File.Exists(ClosePreferenceFile)&&File.ReadAllText(ClosePreferenceFile)=="exit")closeBehavior="exit";}catch{ }
             using(var iconStream=OpenAppIcon())
             {
@@ -65,11 +86,15 @@ namespace CinnaFanCon
             }
             Title=qa?"FanController · UI 验证（演示）":"FanController";Width=1280;Height=860;MinWidth=920;MinHeight=660;
             if(capture==null){var area=SystemParameters.WorkArea;Width=Math.Min(1280,area.Width-32);Height=Math.Min(860,area.Height-32);MinWidth=Math.Min(920,area.Width-16);MinHeight=Math.Min(660,area.Height-16);}
-            WindowStyle=WindowStyle.None;ResizeMode=ResizeMode.CanResize;WindowStartupLocation=WindowStartupLocation.CenterScreen;
-            darkTheme=demo?SystemDark():InitialDarkTheme();
+            if(qaLaunch!=null){Width=qaLaunch.Width??Width;Height=qaLaunch.Height??Height;}
+            WindowStyle=WindowStyle.SingleBorderWindow;ResizeMode=ResizeMode.CanResize;WindowStartupLocation=WindowStartupLocation.CenterScreen;
+            darkTheme=qaLaunch!=null?qaLaunch.InitialDark(SystemDark()):demo?SystemDark():InitialDarkTheme();
             var initial=darkTheme?Color.FromRgb(27,29,32):Color.FromRgb(255,252,246);
             Background=new SolidColorBrush(initial);
-            WindowChrome.SetWindowChrome(this,new WindowChrome {CaptionHeight=0,ResizeBorderThickness=new Thickness(6),GlassFrameThickness=new Thickness(0)});
+            // A non-empty glass frame makes WindowChrome clear its custom HRGN.
+            // Keeping WS_CAPTION/WS_THICKFRAME and no region lets DWM own the
+            // real outer corners while WebView2 draws the approved titlebar.
+            WindowChrome.SetWindowChrome(this,new WindowChrome {CaptionHeight=0,ResizeBorderThickness=new Thickness(6),GlassFrameThickness=new Thickness(1),UseAeroCaptionButtons=false});
             var border=new System.Windows.Controls.Border {Padding=new Thickness(1),Background=new SolidColorBrush(initial),Child=browser};Content=border;
             browser.DefaultBackgroundColor=System.Drawing.Color.FromArgb(initial.R,initial.G,initial.B);
             Loaded+=async delegate{await Initialize();};
@@ -80,7 +105,7 @@ namespace CinnaFanCon
                 ApplyTheme(darkTheme?"dark":"light");
             };
             Closing+=OnClosing;
-            Closed+=delegate{if(verifyTrayExit)File.AppendAllText(smokeReport,"PASS: tray exit closes the host after the simulated worker stops\r\n");};
+            Closed+=delegate{if(qaMetricsTimer!=null)qaMetricsTimer.Stop();if(verifyTrayExit)File.AppendAllText(smokeReport,"PASS: tray exit closes the host after the simulated worker stops\r\n");};
             if(capturePath==null||smokeReport!=null)
             {
                 try
@@ -99,9 +124,11 @@ namespace CinnaFanCon
             {
                 if(WindowState!=WindowState.Minimized)restoredState=WindowState;
                 Dispatcher.BeginInvoke(new Action(UpdateWindowFramePadding));
+                ApplyNativeCorners();
+                PostCaptionHover(0);
                 PostWindowState();
             };
-            if(capturePath!=null){ShowInTaskbar=false;WindowStartupLocation=WindowStartupLocation.Manual;Left=-30000;Top=-30000;}
+            if(capturePath!=null){ShowActivated=false;ShowInTaskbar=false;WindowStartupLocation=WindowStartupLocation.Manual;Left=-30000;Top=-30000;}
         }
         private static Stream OpenAppIcon()
         {
@@ -109,7 +136,7 @@ namespace CinnaFanCon
             if(stream==null)throw new InvalidOperationException("应用图标缺失，请重新安装。");
             return stream;
         }
-        private void Restore(){if(closing)return;Show();WindowState=restoredState;Activate();}
+        private void Restore(){if(closing)return;Show();WindowState=restoredState;if(capturePath==null)Activate();}
         private void MinimizeToTray()
         {
             if(tray==null||!tray.Visible)
@@ -153,6 +180,10 @@ namespace CinnaFanCon
             {
                 try{Directory.CreateDirectory(Path.GetDirectoryName(ThemePreferenceFile));File.WriteAllText(ThemePreferenceFile,preference);}catch{ }
             }
+            if(qaLaunch!=null&&(preference=="light"||preference=="dark"||preference=="system"))
+            {
+                try{Directory.CreateDirectory(qaLaunch.Root);File.WriteAllText(qaLaunch.ThemePath,preference);}catch{ }
+            }
             var color=darkTheme?Color.FromRgb(27,29,32):Color.FromRgb(255,252,246);
             Background=new SolidColorBrush(color);
             var border=Content as System.Windows.Controls.Border;
@@ -162,6 +193,18 @@ namespace CinnaFanCon
             if(menu!=null)menu.SetTheme(darkTheme);
             var handle=new WindowInteropHelper(this).Handle;
             if(handle!=IntPtr.Zero)try{int value=darkTheme?1:0;DwmSetWindowAttribute(handle,20,ref value,sizeof(int));}catch(EntryPointNotFoundException){ }catch(DllNotFoundException){ }
+            ApplyNativeCorners();
+        }
+        private void ApplyNativeCorners()
+        {
+            var handle=new WindowInteropHelper(this).Handle;
+            if(handle==IntPtr.Zero)return;
+            try
+            {
+                int preference=WindowState==WindowState.Maximized?1:2;
+                DwmSetWindowAttribute(handle,33,ref preference,sizeof(int));
+            }
+            catch(EntryPointNotFoundException){ }catch(DllNotFoundException){ }
         }
         private void PostWindowState(){Post(new WireMessage {Type="window-state",Message=WindowState==WindowState.Maximized?"maximized":"normal"});}
         private void UpdateWindowFramePadding()
@@ -179,7 +222,26 @@ namespace CinnaFanCon
         private void RequestExit(){exitRequested=true;Close();}
         private IntPtr OnWindowMessage(IntPtr handle,int message,IntPtr wParam,IntPtr lParam,ref bool handled)
         {
+            if(message==0x0084)
+            {
+                int hit=HitTestHeader(lParam);
+                if(hit!=0){handled=true;return new IntPtr(hit);}
+            }
+            if(message==0x00A0)
+            {
+                PostCaptionHover(wParam.ToInt32());
+                var tracking=new MouseTracking {Size=Marshal.SizeOf(typeof(MouseTracking)),Flags=0x12,Window=handle};
+                TrackMouseEvent(ref tracking);
+            }
+            if(message==0x02A2||message==0x0200||message==0x001F)PostCaptionHover(0);
+            if(message==0x00A1&&(wParam.ToInt32()==8||wParam.ToInt32()==9||wParam.ToInt32()==20))
+            {
+                // Let the standard NC button tracker issue minimize/maximize/
+                // close system commands. Closing still goes through OnClosing.
+                handled=true;return DefWindowProc(handle,message,wParam,lParam);
+            }
             if(message==0x02E0&&WindowState==WindowState.Maximized)Dispatcher.BeginInvoke(new Action(UpdateWindowFramePadding));
+            if(message==0x031E)Dispatcher.BeginInvoke(new Action(ApplyNativeCorners));
             if(RestoreMessage!=0&&message==RestoreMessage&&capturePath==null&&!isolatedQa)
             {
                 handled=true;Dispatcher.BeginInvoke(new Action(Restore));return new IntPtr(1);
@@ -189,6 +251,35 @@ namespace CinnaFanCon
                 handled=true;Dispatcher.BeginInvoke(new Action(RequestExit));return new IntPtr(1);
             }
             return IntPtr.Zero;
+        }
+        private int HitTestHeader(IntPtr coordinates)
+        {
+            if(WindowState==WindowState.Minimized||browser.ActualWidth<=0)return 0;
+            int x=unchecked((short)(coordinates.ToInt64()&0xffff));
+            int y=unchecked((short)((coordinates.ToInt64()>>16)&0xffff));
+            if(WindowState!=WindowState.Maximized)
+            {
+                ScreenRect bounds;
+                var handle=new WindowInteropHelper(this).Handle;
+                if(GetWindowRect(handle,out bounds))
+                {
+                    double border=6.0*GetDpiForWindow(handle)/96;
+                    if(x<bounds.Left+border||x>=bounds.Right-border||y<bounds.Top+border||y>=bounds.Bottom-border)return 0;
+                }
+            }
+            var point=browser.PointFromScreen(new Point(x,y));
+            double zoom=browser.ZoomFactor,width=browser.ActualWidth,button=frameContract.Titlebar.CaptionWidth*zoom;
+            if(point.Y<0||point.Y>=frameContract.Titlebar.Height*zoom||point.X<0||point.X>=width)return 0;
+            if(point.X>=width-button)return 20;
+            if(point.X>=width-2*button)return 9;
+            if(point.X>=width-3*button)return 8;
+            return 2;
+        }
+        private void PostCaptionHover(int hit)
+        {
+            string value=hit==8?"minimize":hit==9?"maximize":hit==20?"close":"none";
+            if(value==captionHover)return;
+            captionHover=value;Post(new WireMessage {Type="caption-hover",Message=value});
         }
         private void BeginWindowDrag()
         {
@@ -211,7 +302,7 @@ namespace CinnaFanCon
             {
                 string ui=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"ui");
                 if(!File.Exists(Path.Combine(ui,"index.html")))throw new FileNotFoundException("界面文件缺失，请完整解压 FanController 压缩包。");
-                string cache=isolatedQa?Path.Combine(Environment.CurrentDirectory,"work","webview-v2-qa-"+Process.GetCurrentProcess().Id):capturePath==null?Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"cinna-fanCon","webview-v2"):Path.Combine(Environment.CurrentDirectory,"work","webview-v2-capture");
+                string cache=qaLaunch!=null?qaLaunch.Cache:capturePath==null?Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"cinna-fanCon","webview-v2"):Path.Combine(Environment.CurrentDirectory,"work","webview-v2-capture");
                 var environment=await CoreWebView2Environment.CreateAsync(null,cache);
                 await browser.EnsureCoreWebView2Async(environment);
                 var core=browser.CoreWebView2;
@@ -224,6 +315,14 @@ namespace CinnaFanCon
                 core.NewWindowRequested+=delegate(object s,CoreWebView2NewWindowRequestedEventArgs e){e.Handled=true;};
                 core.PermissionRequested+=delegate(object s,CoreWebView2PermissionRequestedEventArgs e){e.State=CoreWebView2PermissionState.Deny;};
                 core.WebMessageReceived+=OnMessage;
+                if(qaLaunch!=null)
+                {
+                    await core.AddScriptToExecuteOnDocumentCreatedAsync(qaLaunch.BootstrapScript());
+                    qaMetricsTimer=new DispatcherTimer {Interval=TimeSpan.FromSeconds(1)};
+                    qaMetricsTimer.Tick+=async delegate{await WriteQaMetrics();};qaMetricsTimer.Start();
+                }
+                else if(smokeReport!=null)
+                    await core.AddScriptToExecuteOnDocumentCreatedAsync("localStorage.setItem('cinna-fancon-navigation','expanded');");
                 core.Navigate(Origin+"/index.html");
                 bool preferred=!demo&&capturePath==null&&File.Exists(MotherboardPreference);
                 if(smokeReport!=null){ /* The ready handshake captures the initial loading UI before starting its demo worker. */ }
@@ -243,6 +342,101 @@ namespace CinnaFanCon
                 if(capturePath!=null){FailCapture(e);return;}
                 MessageBox.Show(this,"界面启动失败："+e.Message+"\n\n请确认已安装 Microsoft Edge WebView2 Runtime，并完整解压了应用文件。","FanController",MessageBoxButton.OK,MessageBoxImage.Error);RequestExit();
             }
+        }
+        private async Task WriteQaMetrics()
+        {
+            if(qaLaunch==null||qaReporting||!ready||closing||browser.CoreWebView2==null)return;
+            qaReporting=true;
+            try
+            {
+                string layout=await browser.CoreWebView2.ExecuteScriptAsync(@"(()=>{
+                    const bounds=node=>{if(!node)return null;const r=node.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};};
+                    const rect=selector=>bounds(document.querySelector(selector));
+                    const font=selector=>{const node=document.querySelector(selector);if(!node)return null;const s=getComputedStyle(node);return {size:s.fontSize,weight:s.fontWeight,lineHeight:s.lineHeight};};
+                    const icon=selector=>{const node=document.querySelector(selector);if(!node)return null;const s=getComputedStyle(node),p=getComputedStyle(node.parentElement);return {bounds:bounds(node),color:s.color,stroke:s.stroke,strokeWidth:s.strokeWidth,opacity:s.opacity,containerColor:p.color,containerOpacity:p.opacity};};
+                    return {
+                        devicePixelRatio:window.devicePixelRatio,
+                        theme:document.documentElement.dataset.theme,
+                        viewport:{width:innerWidth,height:innerHeight},
+                        header:rect('.app-header'),brandIcon:rect('.brand-image'),brandName:rect('.brand-name'),brandFont:font('.brand-name'),
+                        captions:[...document.querySelectorAll('.window-actions button')].map(node=>({label:node.getAttribute('aria-label'),bounds:bounds(node),glyph:bounds(node.querySelector('.window-glyph'))})),
+                        toolbar:rect('.content-toolbar'),pageTitle:rect('.toolbar-leading h2'),pageTitleFont:font('.toolbar-leading h2'),status:rect('.connection-status'),statusDot:rect('.status-dot'),
+                        sidebar:rect('.app-sidebar'),rail:rect('.sidebar-rail'),sidebarExpanded:document.querySelector('.app-sidebar')?.dataset.expanded,sidebarPinned:document.querySelector('.app-sidebar')?.dataset.pinned,
+                        navigation:[...document.querySelectorAll('.app-sidebar .navigation-item')].map(node=>({label:node.getAttribute('aria-label'),bounds:bounds(node),icon:bounds(node.querySelector('.navigation-icon svg')),font:{size:getComputedStyle(node).fontSize,weight:getComputedStyle(node).fontWeight}})),
+                        footer:rect('.app-sidebar .sidebar-footer'),settings:rect('.app-sidebar .sidebar-footer .navigation-item'),pin:rect('.app-sidebar .sidebar-pin'),
+                        content:rect('.main-content'),settingsPage:rect('.settings-page'),sectionTitleFont:font('.settings-section h4'),
+                        themeField:rect('[data-testid=theme-select]'),closeField:rect('[data-testid=close-select]'),
+                        selectIcons:{themePrefix:icon('[data-testid=theme-select] .ant-select-prefix svg'),themeSuffix:icon('[data-testid=theme-select] .ant-select-suffix svg'),closeSuffix:icon('[data-testid=close-select] .ant-select-suffix svg')},
+                        menu:[...document.querySelectorAll('.ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item-option')].map(node=>({text:node.textContent,bounds:bounds(node),font:{size:getComputedStyle(node).fontSize,weight:getComputedStyle(node).fontWeight}}))
+                    };
+                })()");
+                var handle=new WindowInteropHelper(this).Handle;
+                ScreenRect area;GetWindowRect(handle,out area);
+                ScreenRect visibleArea;int visibleResult=DwmGetWindowAttributeRect(handle,9,out visibleArea,Marshal.SizeOf(typeof(ScreenRect)));
+                var clientOrigin=new ScreenPoint();bool clientOriginValid=ClientToScreen(handle,ref clientOrigin);
+                var browserOrigin=browser.PointToScreen(new Point(0,0));
+                var browserOffset=browser.TranslatePoint(new Point(0,0),this);
+                var hostBorder=Content as System.Windows.Controls.Border;
+                var hostPadding=hostBorder==null?new Thickness():hostBorder.Padding;
+                uint dpi=GetDpiForWindow(handle);
+                int corner;int cornerResult=DwmGetWindowAttribute(handle,33,out corner,sizeof(int));
+                uint style=unchecked((uint)GetWindowLongPtr(handle,-16).ToInt64());
+                uint extended=unchecked((uint)GetWindowLongPtr(handle,-20).ToInt64());
+                var headerHits=new int[3];
+                for(int index=0;index<3;index++)
+                {
+                    var point=browser.PointToScreen(new Point(browser.ActualWidth-(2.5-index)*frameContract.Titlebar.CaptionWidth*browser.ZoomFactor,frameContract.Titlebar.Height*browser.ZoomFactor/2));
+                    int packed=(unchecked((int)point.X)&0xffff)|((unchecked((int)point.Y)&0xffff)<<16);
+                    headerHits[index]=SendMessage(handle,0x0084,IntPtr.Zero,new IntPtr(packed)).ToInt32();
+                }
+                var edgePoints=new[]{
+                    new ScreenPoint {X=area.Left+1,Y=(area.Top+area.Bottom)/2},
+                    new ScreenPoint {X=area.Right-2,Y=(area.Top+area.Bottom)/2},
+                    new ScreenPoint {X=(area.Left+area.Right)/2,Y=area.Top+1},
+                    new ScreenPoint {X=(area.Left+area.Right)/2,Y=area.Bottom-2},
+                    new ScreenPoint {X=area.Left+1,Y=area.Top+1},
+                    new ScreenPoint {X=area.Right-2,Y=area.Top+1},
+                    new ScreenPoint {X=area.Left+1,Y=area.Bottom-2},
+                    new ScreenPoint {X=area.Right-2,Y=area.Bottom-2}
+                };
+                var edgeHits=new int[edgePoints.Length];
+                for(int index=0;index<edgePoints.Length;index++)
+                {
+                    var point=edgePoints[index];
+                    int packed=(point.X&0xffff)|((point.Y&0xffff)<<16);
+                    edgeHits[index]=SendMessage(handle,0x0084,IntPtr.Zero,new IntPtr(packed)).ToInt32();
+                }
+                var region=CreateRectRgn(0,0,0,0);
+                int regionType;
+                try{regionType=GetWindowRgn(handle,region);}finally{DeleteObject(region);}
+                string report=@"{""processId"":"+Process.GetCurrentProcess().Id+
+                    @",""windowHandle"":"+handle.ToInt64()+@",""nativeDpi"":"+dpi+
+                    @",""windowState"":"""+WindowState+@""",""style"":""0x"+style.ToString("X8")+
+                    @""",""extendedStyle"":""0x"+extended.ToString("X8")+
+                    @""",""hasCaption"":"+((style&0x00C00000)==0x00C00000?"true":"false")+
+                    @",""hasResizeFrame"":"+((style&0x00040000)!=0?"true":"false")+
+                    @",""layered"":"+((extended&0x00080000)!=0?"true":"false")+
+                    @",""windowRegionType"":"+regionType+@",""dwmCornerResult"":"+cornerResult+
+                    @",""dwmCornerPreference"":"+corner+@",""webViewZoomFactor"":"+browser.ZoomFactor.ToString(CultureInfo.InvariantCulture)+
+                    @",""captionHitTests"":["+string.Join(",",headerHits)+@"],""edgeHitTests"":["+string.Join(",",edgeHits)+@"],""captionHover"":"""+captionHover+@""""+
+                    @",""extendedFrameBoundsResult"":"+visibleResult+
+                    @",""visibleFrameBoundsPx"":{""x"":"+visibleArea.Left+@",""y"":"+visibleArea.Top+@",""width"":"+(visibleArea.Right-visibleArea.Left)+@",""height"":"+(visibleArea.Bottom-visibleArea.Top)+
+                    @"},""clientOriginValid"":"+(clientOriginValid?"true":"false")+@",""clientOriginPx"":{""x"":"+clientOrigin.X+@",""y"":"+clientOrigin.Y+
+                    @"},""webViewOriginPx"":{""x"":"+browserOrigin.X.ToString(CultureInfo.InvariantCulture)+@",""y"":"+browserOrigin.Y.ToString(CultureInfo.InvariantCulture)+
+                    @"},""webViewOffsetDip"":{""x"":"+browserOffset.X.ToString(CultureInfo.InvariantCulture)+@",""y"":"+browserOffset.Y.ToString(CultureInfo.InvariantCulture)+
+                    @"},""hostPaddingDip"":{""left"":"+hostPadding.Left.ToString(CultureInfo.InvariantCulture)+@",""top"":"+hostPadding.Top.ToString(CultureInfo.InvariantCulture)+@",""right"":"+hostPadding.Right.ToString(CultureInfo.InvariantCulture)+@",""bottom"":"+hostPadding.Bottom.ToString(CultureInfo.InvariantCulture)+
+                    "}"+
+                    @",""windowBoundsPx"":{""x"":"+area.Left+@",""y"":"+area.Top+@",""width"":"+(area.Right-area.Left)+@",""height"":"+(area.Bottom-area.Top)+
+                    @"},""wpfWidthDip"":"+ActualWidth.ToString(CultureInfo.InvariantCulture)+@",""wpfHeightDip"":"+ActualHeight.ToString(CultureInfo.InvariantCulture)+
+                    @",""layout"":"+layout+"}";
+                Directory.CreateDirectory(qaLaunch.Root);
+                File.WriteAllText(qaLaunch.MetricsPath,report,new UTF8Encoding(false));
+            }
+            catch(Exception error)
+            {
+                try{Directory.CreateDirectory(qaLaunch.Root);File.WriteAllText(qaLaunch.MetricsPath+".error.txt",error.ToString());}catch{ }
+            }
+            finally{qaReporting=false;}
         }
         private static bool Trusted(string address)
         {
@@ -416,7 +610,7 @@ namespace CinnaFanCon
                     }
                     actions.length=0;down(padding,2);down(padding,1);down(padding,0,false);
                     check(actions.length===0,'Secondary or non-primary pointer input started a drag.');
-                    for(const target of [control('最小化'),document.querySelector('[data-testid=window-maximize]'),control('关闭窗口'),document.querySelector('[data-testid=app-settings]'),document.querySelector('[data-testid=advanced-menu]'),document.querySelector('.sidebar-toggle button')])down(target.querySelector('svg path')||target);
+                    for(const target of [control('最小化'),document.querySelector('[data-testid=window-maximize]'),control('关闭窗口'),document.querySelector('[data-testid=app-settings]'),document.querySelector('[data-testid=advanced-menu]'),document.querySelector('[data-testid=sidebar-pin]')])down(target.querySelector('svg path')||target);
                     check(actions.length===0,'An interactive control started a window drag.');
                     for(const [label,action] of [['最小化','minimize'],['最大化窗口','maximize'],['关闭窗口','close']]){
                         control(label).click();check(actions.pop()===action,'A window control lost its click action.');
@@ -438,7 +632,9 @@ namespace CinnaFanCon
         private async Task SelectTheme(string mode)
         {
             await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=app-settings]').click()");
-            await WaitForUi("!!document.querySelector('[data-testid=theme-"+mode+"]')","Appearance settings did not load.");
+            await WaitForUi("!!document.querySelector('[data-testid=theme-select]')","Appearance settings did not load.");
+            await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=theme-select]').dispatchEvent(new MouseEvent('mousedown',{bubbles:true,cancelable:true}))");
+            await WaitForUi("!!document.querySelector('[data-testid=theme-"+mode+"]')","The theme dropdown did not open.");
             await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=theme-"+mode+"]').click()");
             await WaitForUi("document.querySelector('.app-layout').dataset.theme==='"+mode+"'","The chosen theme did not apply.");
             await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=home-menu]').click()");
@@ -580,14 +776,14 @@ namespace CinnaFanCon
                     await browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-testid=release-all]').click()");await Task.Delay(300);
                     string light=await browser.CoreWebView2.ExecuteScriptAsync("getComputedStyle(document.querySelector('.app-layout > .ant-layout')).backgroundColor");
                     string lightSidebar=await browser.CoreWebView2.ExecuteScriptAsync("getComputedStyle(document.querySelector('.app-sidebar')).backgroundColor");
-                    string lightMenu=await browser.CoreWebView2.ExecuteScriptAsync("!!document.querySelector('.app-sidebar.ant-layout-sider-light .ant-menu-light')");
+                    string lightMenu=await browser.CoreWebView2.ExecuteScriptAsync("!!document.querySelector('.sidebar-rail.ant-layout-sider-light .navigation-list')");
                     if(lightMenu!="true")throw new Exception("Light theme did not reach the sidebar and navigation menu.");
                     await SelectTheme("dark");await Task.Delay(200);
                     await CaptureUiImage("desktop-overview-dark.png");
                     string dark=await browser.CoreWebView2.ExecuteScriptAsync("getComputedStyle(document.querySelector('.app-layout > .ant-layout')).backgroundColor");
                     if(dark==light)throw new Exception("Switching to the dark theme did not change the desktop surface.");
                     string darkSidebar=await browser.CoreWebView2.ExecuteScriptAsync("getComputedStyle(document.querySelector('.app-sidebar')).backgroundColor");
-                    string darkMenu=await browser.CoreWebView2.ExecuteScriptAsync("!!document.querySelector('.app-sidebar.ant-layout-sider-dark .ant-menu-dark')");
+                    string darkMenu=await browser.CoreWebView2.ExecuteScriptAsync("!!document.querySelector('.sidebar-rail.ant-layout-sider-dark .navigation-list')");
                     if(darkSidebar==lightSidebar||darkMenu!="true")throw new Exception("Switching to the dark theme did not update the sidebar and navigation menu.");
                     await SelectTheme("light");await Task.Delay(200);
                     string restoredSidebar=await browser.CoreWebView2.ExecuteScriptAsync("getComputedStyle(document.querySelector('.app-sidebar')).backgroundColor");
@@ -600,6 +796,7 @@ namespace CinnaFanCon
                     File.AppendAllText(smokeReport,"PASS: loading, empty devices, connection failure and long names render with simulated fixtures\r\n");
                 }
                 await Task.Delay(smokeReport==null?400:2300);
+                if(qaLaunch!=null)await WriteQaMetrics();
                 using(var stream=File.Create(capturePath))await browser.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,stream);
                 if(smokeReport!=null)
                 {

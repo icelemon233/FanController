@@ -15,6 +15,7 @@ namespace CinnaFanCon
         [DllImport("dwmapi.dll")]private static extern int DwmSetWindowAttribute(IntPtr window,int attribute,ref int value,int size);
         [DllImport("user32.dll")]private static extern uint GetDpiForWindow(IntPtr window);
         private readonly MenuRenderer painter;
+        private readonly WindowFrameContract metrics=WindowFrameContract.Load();
         private Font menuFont;
         private float scale=1;
         private bool dark,highContrast;
@@ -91,7 +92,7 @@ namespace CinnaFanCon
             dark=useDark;highContrast=SystemInformation.HighContrast;scale=Math.Max(1,dpi/96f);
             surface=highContrast?SystemColors.Menu:dark?Color.FromArgb(36,39,43):Color.White;
             ink=highContrast?SystemColors.MenuText:dark?Color.FromArgb(242,239,234):Color.FromArgb(70,51,42);
-            hover=highContrast?SystemColors.Highlight:dark?Color.FromArgb(38,60,69):Color.FromArgb(231,244,249);
+            hover=highContrast?SystemColors.Highlight:dark?Color.FromArgb(48,52,58):Color.FromArgb(232,231,226);
             border=highContrast?SystemColors.WindowText:dark?Color.FromArgb(59,65,71):Color.FromArgb(228,226,221);
             muted=highContrast?SystemColors.GrayText:dark?Color.FromArgb(184,178,170):Color.FromArgb(112,105,96);
             // Pixel fonts avoid WinForms' legacy primary-monitor font scaling
@@ -101,9 +102,9 @@ namespace CinnaFanCon
             {
                 var previous=menuFont;menuFont=new Font("Segoe UI",fontSize,FontStyle.Regular,GraphicsUnit.Pixel);Font=menuFont;if(previous!=null)previous.Dispose();
             }
-            BackColor=surface;ForeColor=ink;Padding=new Padding(Pixels(4));
-            ClientSize=new Size(Pixels(256),Pixels(125));
-            foreach(ToolStripItem item in Items)item.Size=new Size(ClientSize.Width,Pixels(item is ToolStripSeparator?9:36));
+            BackColor=surface;ForeColor=ink;Padding=new Padding(Pixels(metrics.Controls.MenuInset));
+            ClientSize=new Size(Pixels(256),Pixels(metrics.Controls.MenuInset*2+metrics.Controls.MenuItemHeight*3+9));
+            foreach(ToolStripItem item in Items)item.Size=new Size(ClientSize.Width-Padding.Horizontal,Pixels(item is ToolStripSeparator?9:metrics.Controls.MenuItemHeight));
             PerformLayout();ApplyWindowFrame();Invalidate(true);
         }
         private void ApplyWindowFrame()
@@ -138,17 +139,17 @@ namespace CinnaFanCon
             {
                 if(!e.Item.Selected||!e.Item.Enabled)return;
                 e.Graphics.SmoothingMode=SmoothingMode.AntiAlias;
-                int inset=menu.Pixels(4);
-                var bounds=new Rectangle(inset,0,e.Item.Width-inset*2-1,e.Item.Height-1);
-                using(var path=Round(bounds,menu.Pixels(4)))using(var brush=new SolidBrush(menu.hover))e.Graphics.FillPath(brush,path);
+                var bounds=new Rectangle(0,0,e.Item.Width-1,e.Item.Height-1);
+                using(var path=Round(bounds,menu.Pixels(menu.metrics.Controls.Radius)))using(var brush=new SolidBrush(menu.hover))e.Graphics.FillPath(brush,path);
             }
             protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e)
             {
                 Color color=!e.Item.Enabled?menu.muted:menu.highContrast&&e.Item.Selected?SystemColors.HighlightText:menu.ink;
-                int left=menu.Pixels(44);
+                int left=menu.Pixels(12+menu.metrics.Sidebar.Size+8);
                 var bounds=new Rectangle(left,0,e.Item.Width-left-menu.Pixels(12),e.Item.Height);
                 TextRenderer.DrawText(e.Graphics,e.Text,e.TextFont,bounds,color,TextFormatFlags.Left|TextFormatFlags.VerticalCenter|TextFormatFlags.SingleLine|TextFormatFlags.NoPrefix|TextFormatFlags.NoPadding);
-                DrawGlyph(e.Graphics,(int)e.Item.Tag,new Rectangle(menu.Pixels(16),(e.Item.Height-menu.Pixels(16))/2,menu.Pixels(16),menu.Pixels(16)),color);
+                int icon=menu.Pixels(menu.metrics.Sidebar.Size);
+                DrawGlyph(e.Graphics,(int)e.Item.Tag,new Rectangle(menu.Pixels(12),(e.Item.Height-icon)/2,icon,icon),color,menu.metrics.Sidebar.Stroke);
             }
             protected override void OnRenderSeparator(ToolStripSeparatorRenderEventArgs e)
             {
@@ -160,14 +161,33 @@ namespace CinnaFanCon
                 path.AddArc(bounds.Left,bounds.Top,size,size,180,90);path.AddArc(bounds.Right-size,bounds.Top,size,size,270,90);
                 path.AddArc(bounds.Right-size,bounds.Bottom-size,size,size,0,90);path.AddArc(bounds.Left,bounds.Bottom-size,size,size,90,90);path.CloseFigure();return path;
             }
-            private static void DrawGlyph(Graphics graphics,int glyph,Rectangle bounds,Color color)
+            // Lucide app-window / rotate-ccw / power; ISC/MIT notices are in
+            // third-party/Lucide-LICENSE.txt. Use the same 24-unit geometry.
+            private static readonly string[] Glyphs={
+                "M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z M10 4v4 M2 8h20 M6 4v4",
+                "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8 M3 3v5h5",
+                "M12 2v10 M18.4 6.6a9 9 0 1 1-12.77.04"
+            };
+            private static void DrawGlyph(Graphics graphics,int glyph,Rectangle bounds,Color color,float stroke)
             {
-                var state=graphics.Save();graphics.TranslateTransform(bounds.X,bounds.Y);graphics.ScaleTransform(bounds.Width/16f,bounds.Height/16f);graphics.SmoothingMode=SmoothingMode.AntiAlias;
-                using(var pen=new Pen(color,1.2f){StartCap=LineCap.Round,EndCap=LineCap.Round,LineJoin=LineJoin.Round})
+                var state=graphics.Save();graphics.TranslateTransform(bounds.X,bounds.Y);graphics.ScaleTransform(bounds.Width/24f,bounds.Height/24f);graphics.SmoothingMode=SmoothingMode.AntiAlias;
+                using(var pen=new Pen(color,stroke){StartCap=LineCap.Round,EndCap=LineCap.Round,LineJoin=LineJoin.Round})
+                using(var path=new GraphicsPath())
                 {
-                    if(glyph==0){graphics.DrawRectangle(pen,2.5f,3.5f,11,9);graphics.DrawLine(pen,2.5f,6.5f,13.5f,6.5f);}
-                    else if(glyph==1){graphics.DrawArc(pen,2.5f,2.5f,11,11,205,290);graphics.DrawLines(pen,new[]{new PointF(2.5f,2),new PointF(2.5f,6),new PointF(6.5f,6)});}
-                    else{graphics.DrawArc(pen,2.5f,3,11,10.5f,-45,270);graphics.DrawLine(pen,8,1.5f,8,7.5f);}
+                    var geometry=System.Windows.Media.Geometry.Parse(Glyphs[glyph]).GetFlattenedPathGeometry(.01,System.Windows.Media.ToleranceType.Absolute);
+                    foreach(var figure in geometry.Figures)
+                    {
+                        var points=new System.Collections.Generic.List<PointF>{new PointF((float)figure.StartPoint.X,(float)figure.StartPoint.Y)};
+                        foreach(var segment in figure.Segments)
+                        {
+                            var line=segment as System.Windows.Media.LineSegment;
+                            if(line!=null)points.Add(new PointF((float)line.Point.X,(float)line.Point.Y));
+                            var lines=segment as System.Windows.Media.PolyLineSegment;
+                            if(lines!=null)foreach(var point in lines.Points)points.Add(new PointF((float)point.X,(float)point.Y));
+                        }
+                        path.StartFigure();if(points.Count>1)path.AddLines(points.ToArray());if(figure.IsClosed)path.CloseFigure();
+                    }
+                    graphics.DrawPath(pen,path);
                 }
                 graphics.Restore(state);
             }

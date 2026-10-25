@@ -1,7 +1,7 @@
 {
   "name": "FanController",
-  "version": "0.4.7",
-  "channel": "preview",
+  "version": "1.0.0",
+  "channel": "stable",
   "developer": "Cinna",
   "series": "Cinna"
 }

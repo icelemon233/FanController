@@ -1,7 +1,9 @@
 import { App, ConfigProvider } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
+import { Check, ChevronDown } from 'lucide-react';
 import { type ReactNode, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { resolveTheme, type ThemeMode, type ThemePreference } from '../platform/appearance.ts';
+import { trackInputModality } from '../platform/inputModality.ts';
 import type { ChoicePreference } from '../platform/preferences.ts';
 import { createAppTheme } from './theme.ts';
 
@@ -27,6 +29,7 @@ export function AppTheme({
   ) => ReactNode;
 }) {
   const [initial] = useState(() => preference.read());
+  useEffect(() => trackInputModality(document), []);
   const [choice, setChoice] = useState(initial.value);
   const [systemDark, setSystemDark] = useState(
     () => window.matchMedia('(prefers-color-scheme: dark)').matches,
@@ -70,7 +73,19 @@ export function AppTheme({
     setIssue(preference.write(next));
   };
   return (
-    <ConfigProvider locale={zhCN} theme={selected.config}>
+    <ConfigProvider
+      locale={zhCN}
+      theme={selected.config}
+      select={{
+        styles: {
+          root: { minHeight: selected.config.token?.controlHeight, alignItems: 'center' },
+          prefix: { color: 'var(--fd-muted)', opacity: 1 },
+          suffix: { color: 'var(--fd-muted)', opacity: 1 },
+        },
+        suffixIcon: <ChevronDown aria-hidden="true" />,
+        menuItemSelectedIcon: <Check aria-hidden="true" />,
+      }}
+    >
       <App>
         <ThemeWarning issue={issue} />
         {children(mode, choice, choose)}

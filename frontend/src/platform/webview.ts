@@ -7,6 +7,7 @@ export interface WebViewPort {
 }
 
 export type WindowAction = 'minimize' | 'maximize' | 'close' | 'exit' | 'drag';
+export type CaptionHover = 'none' | 'minimize' | 'maximize' | 'close';
 
 export function getWebViewPort(): WebViewPort | undefined {
   const chrome: unknown = Reflect.get(window, 'chrome');
@@ -33,6 +34,17 @@ export function createWindowControls(port: WebViewPort | undefined) {
     },
     setCloseBehavior(behavior: CloseBehavior) {
       port?.postMessage({ Type: 'command', Action: 'closeBehavior', Message: behavior });
+    },
+    subscribeCaptionHover(listener: (hover: CaptionHover) => void) {
+      const receive = ({ data }: { data: unknown }) => {
+        if (!data || typeof data !== 'object' || Reflect.get(data, 'Type') !== 'caption-hover')
+          return;
+        const value: unknown = Reflect.get(data, 'Message');
+        if (value === 'none' || value === 'minimize' || value === 'maximize' || value === 'close')
+          listener(value);
+      };
+      port?.addEventListener('message', receive);
+      return () => port?.removeEventListener('message', receive);
     },
     subscribeWindowState(listener: (maximized: boolean) => void) {
       const receive = ({ data }: { data: unknown }) => {

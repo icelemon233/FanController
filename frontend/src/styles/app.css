@@ -22,8 +22,11 @@ button {
 .ant-btn .anticon {
   font-size: 18px;
 }
-.window-actions .ant-btn .anticon {
-  font-size: 12px;
+.lucide {
+  width: var(--shell-icon-size);
+  height: var(--shell-icon-size);
+  stroke-width: var(--shell-icon-stroke);
+  flex-shrink: 0;
 }
 ::selection {
   background: var(--fd-selection);
@@ -35,38 +38,127 @@ button {
   flex-direction: column;
 }
 .app-body {
+  position: relative;
   min-height: 0;
   flex: 1;
   background: var(--fd-layout);
+  border-top: 1px solid var(--fd-border);
 }
-.app-sidebar.ant-layout-sider {
+.sidebar-rail.ant-layout-sider {
+  position: relative;
+  z-index: 20;
   background: var(--fd-nav-bg);
-  padding: 12px 0;
-  border-inline-end: 1px solid var(--fd-border);
+  transition: none;
 }
-.app-sidebar .ant-layout-sider-children {
+.sidebar-rail .ant-layout-sider-children {
+  position: relative;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+.app-sidebar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--shell-sidebar-collapsed);
+  height: 100%;
   display: flex;
   flex-direction: column;
   min-height: 0;
+  background: var(--fd-nav-bg);
+  box-shadow: inset -1px 0 var(--fd-border);
+  padding-bottom: var(--shell-footer-inset);
 }
-.sidebar-toggle {
-  padding: 0 8px 8px;
+.app-sidebar[data-expanded="true"] {
+  width: var(--shell-sidebar-expanded);
 }
-.sidebar-toggle .ant-btn {
-  width: 40px;
+.app-sidebar[data-floating="true"] {
+  box-shadow:
+    inset -1px 0 var(--fd-border),
+    8px 0 24px rgb(0 0 0 / 0.12);
 }
-.sidebar-menu.ant-menu {
-  background: transparent;
-  border-inline-end: 0;
-  width: auto;
-  margin: 0 8px;
+.navigation-list {
+  display: flex;
+  flex-direction: column;
+  padding: var(--shell-nav-top) var(--shell-nav-inset) 0;
 }
-.sidebar-menu.ant-menu-inline-collapsed > .ant-menu-item {
-  padding-inline: 11px;
-}
-.sidebar-menu.ant-menu .ant-menu-item {
-  padding-inline: 12px;
+.navigation-item.ant-btn {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
   width: 100%;
+  height: var(--shell-nav-row);
+  min-height: var(--shell-nav-row);
+  padding: 0;
+  gap: 0;
+  border: 0;
+  border-radius: var(--fd-radius-control);
+  color: var(--fd-nav-muted);
+  background: transparent;
+  font-size: 14px;
+  font-weight: 400;
+  text-align: left;
+  white-space: nowrap;
+  box-shadow: none;
+}
+.navigation-item.ant-btn:hover {
+  color: var(--fd-nav-ink);
+  background: var(--fd-nav-hover);
+}
+.navigation-item.ant-btn[aria-current="page"] {
+  color: var(--fd-nav-selected-ink);
+  background: var(--fd-nav-selected);
+}
+.navigation-icon {
+  display: grid;
+  place-items: center;
+  width: var(--shell-icon-column);
+  height: var(--shell-nav-row);
+  flex: 0 0 var(--shell-icon-column);
+}
+.navigation-label {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+.app-sidebar[data-expanded="false"] .navigation-label {
+  display: none;
+}
+.navigation-bottom {
+  margin-top: auto;
+  padding-top: 24px;
+}
+.navigation-help {
+  margin: 0 var(--shell-footer-inset);
+}
+.sidebar-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--shell-footer-gap);
+  height: var(--shell-footer-height);
+  margin: 0 var(--shell-footer-inset);
+}
+.sidebar-footer .navigation-item {
+  width: var(--shell-settings-width);
+  flex: 0 0 var(--shell-settings-width);
+}
+.app-sidebar[data-expanded="false"] .sidebar-footer .navigation-item {
+  width: var(--shell-settings-collapsed);
+  flex-basis: var(--shell-settings-collapsed);
+}
+.sidebar-pin.ant-btn {
+  display: grid;
+  place-items: center;
+  width: var(--shell-pin-size);
+  min-width: var(--shell-pin-size);
+  height: var(--shell-pin-size);
+  padding: 0;
+  border: 0;
+  border-radius: var(--fd-radius-control);
+  color: var(--fd-nav-muted);
+}
+.sidebar-pin.ant-btn:hover {
+  color: var(--fd-nav-ink);
+  background: var(--fd-nav-hover);
 }
 [data-window-drag] {
   user-select: none;
@@ -82,13 +174,13 @@ button {
 .brand {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--shell-title-gap);
   min-width: 0;
 }
 .brand-image {
   display: block;
-  width: 24px;
-  height: 24px;
+  width: var(--shell-title-icon-size);
+  height: var(--shell-title-icon-size);
   flex-shrink: 0;
   object-fit: contain;
   pointer-events: none;
@@ -96,28 +188,20 @@ button {
 .brand-name.ant-typography {
   color: var(--fd-nav-ink);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 400;
   display: block;
-  line-height: 1.25;
+  line-height: 1;
   white-space: nowrap;
 }
-.app-sidebar .ant-menu-item .anticon {
-  font-size: 18px;
-}
-.sidebar-bottom {
-  margin-top: auto;
-  padding-top: 24px;
-}
 .app-header {
-  height: 40px;
-  padding: 0 0 0 12px;
+  height: var(--shell-titlebar-height);
+  padding: 0 0 0 var(--shell-title-left);
   display: flex;
   justify-content: space-between;
   align-items: center;
   line-height: normal;
   flex-shrink: 0;
   background: var(--fd-nav-bg);
-  border-bottom: 1px solid var(--fd-border);
 }
 .app-header .ant-typography {
   font-size: 12px;
@@ -141,16 +225,143 @@ button {
   height: 100%;
 }
 .window-actions .ant-btn {
-  width: 46px;
-  height: 39px;
+  display: grid;
+  place-items: center;
+  width: var(--shell-caption-width);
+  height: var(--shell-caption-height);
+  padding: 0;
   border: 0;
   border-radius: 0;
 }
-.window-close:hover {
+.window-glyph {
+  display: block;
+  position: relative;
+  width: var(--shell-caption-glyph);
+  height: var(--shell-caption-glyph);
+}
+.window-glyph-minimize::before {
+  content: "";
+  position: absolute;
+  inset: 50% 0 auto;
+  border-top: var(--shell-caption-stroke) solid currentColor;
+}
+.window-glyph-maximize {
+  border: var(--shell-caption-stroke) solid currentColor;
+}
+.window-glyph-restore::before,
+.window-glyph-restore::after {
+  content: "";
+  position: absolute;
+  width: calc(var(--shell-caption-glyph) - 2px);
+  height: calc(var(--shell-caption-glyph) - 2px);
+  border: var(--shell-caption-stroke) solid currentColor;
+  background: var(--caption-glyph-surface, var(--fd-nav-bg));
+}
+.window-glyph-restore::before {
+  top: 0;
+  right: 0;
+}
+.window-glyph-restore::after {
+  bottom: 0;
+  left: 0;
+}
+.window-actions .ant-btn:hover,
+.window-actions .ant-btn.caption-native-hover {
+  --caption-glyph-surface: var(--fd-nav-hover);
+  background: var(--fd-nav-hover);
+}
+.window-glyph-close::before,
+.window-glyph-close::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 13px;
+  height: var(--shell-caption-stroke);
+  background: currentColor;
+}
+.window-glyph-close::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+.window-glyph-close::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+.window-close:hover,
+.window-close.caption-native-hover {
   color: var(--fd-on-close) !important;
   background: var(--fd-window-close) !important;
 }
+.main-area {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.content-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 0 0 var(--shell-toolbar-height);
+  height: var(--shell-toolbar-height);
+  gap: 12px;
+  padding: 0 var(--shell-toolbar-padding);
+  box-shadow: inset 0 -1px var(--fd-border);
+}
+.toolbar-leading,
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.toolbar-leading h2.ant-typography {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.toolbar-actions .ant-tag {
+  margin: 0;
+}
+.connection-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--shell-status-gap);
+  color: var(--fd-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.status-dot {
+  width: var(--shell-status-dot);
+  height: var(--shell-status-dot);
+  flex: 0 0 var(--shell-status-dot);
+  border-radius: 50%;
+  background: var(--fd-muted);
+}
+.connection-status[data-status="ready"] .status-dot {
+  background: var(--fd-success);
+}
+.connection-status[data-status="failed"] .status-dot {
+  background: var(--fd-danger);
+}
+.navigation-drawer-trigger.ant-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+}
+.navigation-drawer .ant-drawer-body {
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 var(--shell-footer-inset) !important;
+  background: var(--fd-nav-bg);
+}
+.navigation-drawer .ant-drawer-content-wrapper {
+  box-shadow: none;
+}
 .main-scroll {
+  flex: 1;
   overflow: auto;
   min-height: 0;
   min-width: 0;
@@ -160,22 +371,10 @@ button {
   width: 100%;
   max-width: 1640px;
   margin: 0 auto;
-  padding: 24px 32px;
+  padding: var(--shell-page-padding);
   display: flex;
   flex-direction: column;
   gap: var(--fd-space-group);
-}
-.page-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 2px;
-}
-.page-heading h3.ant-typography {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.35;
 }
 .main-content .ant-card {
   border: 0;
@@ -497,8 +696,17 @@ button {
   outline: 2px solid var(--fd-focus);
   outline-offset: 2px;
 }
-.sidebar-menu .ant-menu-item:focus-visible {
+.navigation-item.ant-btn:focus-visible,
+.sidebar-pin.ant-btn:focus-visible {
   outline: 2px solid var(--fd-focus);
+  outline-offset: -2px;
+}
+/* Chromium can retain :focus-visible after a pointer clicks the same focused
+   button. Keep real focus; only the keyboard hint follows input modality. */
+html[data-input-modality="pointer"] .ant-btn:focus-visible {
+  outline: none;
+}
+.window-actions .ant-btn:focus-visible {
   outline-offset: -2px;
 }
 ::-webkit-scrollbar {
@@ -558,11 +766,8 @@ button {
   }
 }
 @media (max-width: 720px) {
-  .connection-status .ant-badge-status-text {
+  .connection-status .connection-label {
     display: none;
-  }
-  .main-content {
-    padding: 16px;
   }
   .overview-board {
     grid-template-columns: 1fr;
@@ -610,40 +815,71 @@ button {
   }
 }
 .settings-page {
-  max-width: 880px;
+  width: 100%;
 }
 .settings-section {
-  padding: 24px 0;
-  border-bottom: 1px solid var(--fd-border);
+  min-width: 0;
 }
-.settings-section:first-child {
-  padding-top: 8px;
+.settings-section + .settings-section {
+  border-top: 1px solid var(--fd-border);
+  padding-top: var(--fd-space-section);
+  margin-top: var(--fd-space-section);
 }
 .settings-section h4.ant-typography {
   margin: 0 0 16px;
   font-size: 16px;
+  font-weight: 500;
+  line-height: 1.5;
 }
 .setting-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 24px;
-  padding: 12px 0;
-}
-.setting-row > div:first-child {
+  display: block;
   min-width: 0;
 }
+.setting-row + .setting-row {
+  margin-top: 16px;
+}
+.setting-row > label,
+.setting-label.ant-typography {
+  display: block;
+  margin-bottom: var(--shell-label-gap);
+  font-size: 14px;
+  font-weight: 400;
+}
 .settings-section .ant-typography-secondary {
-  margin: 4px 0 0;
+  margin: 8px 0 0;
   font-size: 12px;
+  line-height: 1.5;
 }
 .setting-row .ant-select {
-  width: 224px;
-  flex-shrink: 0;
+  width: var(--shell-field-width);
+  max-width: 100%;
 }
-.setting-row .ant-segmented,
-.setting-row .ant-btn {
-  flex-shrink: 0;
+.theme-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.about-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+.about-details .ant-typography-secondary {
+  margin-top: 4px;
+}
+.fan-icon {
+  display: block;
+  width: 1em;
+  height: 1em;
+}
+.fan-icon-spinning {
+  animation: fan-spin 1.2s linear infinite;
+}
+@keyframes fan-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 .curve-canvas svg {
   overflow: visible;
@@ -657,11 +893,6 @@ button {
   overflow-wrap: anywhere;
 }
 @media (max-width: 560px) {
-  .setting-row {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 12px;
-  }
   .header-actions {
     gap: 8px;
   }
@@ -676,10 +907,17 @@ button {
   }
 }
 @media (pointer: coarse) {
-  .sidebar-toggle .ant-btn,
-  .sidebar-menu.ant-menu .ant-menu-item,
+  .navigation-item.ant-btn,
   .main-content .ant-btn {
     min-height: 44px;
+  }
+}
+@media (max-width: 480px) {
+  .content-toolbar {
+    padding-inline: 16px;
+  }
+  .main-content {
+    padding: 16px;
   }
 }
 @media (forced-colors: active) {

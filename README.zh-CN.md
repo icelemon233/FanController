@@ -6,7 +6,7 @@
 
 根据温度调节受支持的 CPU、机箱和显卡风扇的 Windows 应用。以日常安静为起点，逐组配置、核对参数后应用，也可以单独设置曲线或固定输出。
 
-[下载 Windows 安装程序](https://github.com/icelemon233/FanController/releases/download/v0.4.7/FanController-v0.4.7-windows-x64-setup.exe) · [便携 ZIP](https://github.com/icelemon233/FanController/releases/tag/v0.4.7) · [从源码构建](./docs/build.md)
+[下载 Windows 安装程序](https://github.com/icelemon233/FanController/releases/download/v1.0.0/FanController-v1.0.0-windows-x64-setup.exe) · [便携 ZIP](https://github.com/icelemon233/FanController/releases/tag/v1.0.0) · [从源码构建](./docs/build.md)
 
 <img src="./docs/images/overview.png" alt="FanController 散热概览，使用模拟温度和风扇读数" width="960" />
 

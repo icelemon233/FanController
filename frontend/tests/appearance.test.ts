@@ -63,6 +63,22 @@ test('window preferences use the host boundary and state subscriptions reject un
   assert.throws(() => parseHostEvent({ Type: 'window-state', Message: 'broken' }));
   unsubscribe();
   assert.equal(listeners.size, 0);
+  const hovered: string[] = [];
+  const stopHover = controls.subscribeCaptionHover((value) => {
+    hovered.push(value);
+  });
+  for (const data of [
+    { Type: 'window-state', Message: 'normal' },
+    { Type: 'caption-hover', Message: 'maximize' },
+    { Type: 'caption-hover', Message: 'none' },
+    { Type: 'caption-hover', Message: 'invalid' },
+  ])
+    for (const listener of listeners) listener({ data });
+  assert.deepEqual(hovered, ['maximize', 'none']);
+  assert.equal(parseHostEvent({ Type: 'caption-hover', Message: 'close' }), undefined);
+  assert.throws(() => parseHostEvent({ Type: 'caption-hover', Message: 'invalid' }));
+  stopHover();
+  assert.equal(listeners.size, 0);
   controls.setTheme('dark');
   controls.setCloseBehavior('exit');
   controls.act('minimize');

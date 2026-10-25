@@ -1,4 +1,3 @@
-import { CheckOutlined, SlidersOutlined } from '@ant-design/icons';
 import {
   Alert,
   Button,
@@ -15,6 +14,7 @@ import {
   Tag,
   Typography,
 } from 'antd';
+import { Check, SlidersHorizontal } from 'lucide-react';
 import { useId, useState } from 'react';
 import { NumberInput as InputNumber } from '../../components/NumberInput.tsx';
 import { useDraftClose } from '../../components/useDraftClose.ts';
@@ -72,7 +72,7 @@ export default function FanSettingsDrawer({
       className="fan-drawer"
       title={
         <Space>
-          <SlidersOutlined aria-hidden="true" />
+          <SlidersHorizontal aria-hidden="true" />
           风扇设置
         </Space>
       }
@@ -96,7 +96,7 @@ export default function FanSettingsDrawer({
             <Button
               data-testid="apply-channel"
               type="primary"
-              icon={<CheckOutlined aria-hidden="true" />}
+              icon={<Check aria-hidden="true" />}
               loading={busy}
               disabled={Boolean(error) || disabled || busy || !connected}
               onClick={apply}

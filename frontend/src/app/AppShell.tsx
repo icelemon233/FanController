@@ -1,33 +1,22 @@
 import {
-  AppstoreOutlined,
-  CloseOutlined,
-  CompressOutlined,
-  ExpandOutlined,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
-  MinusOutlined,
-  QuestionCircleOutlined,
-  ReloadOutlined,
-  SettingOutlined,
-  SlidersOutlined,
-} from '@ant-design/icons';
-import {
   Alert,
   App,
-  Badge,
   Button,
   Card,
+  Drawer,
   Empty,
   Layout,
-  Menu,
   Skeleton,
   Space,
   Tag,
   Tooltip,
   Typography,
 } from 'antd';
-import { lazy, type PointerEvent, Suspense, useEffect, useState } from 'react';
+import { PanelLeft, RotateCw } from 'lucide-react';
+import { lazy, type PointerEvent, Suspense, useEffect, useRef, useState } from 'react';
 import appIcon from '../assets/app-icon.png';
+import { WindowGlyph } from '../components/WindowGlyph.tsx';
+import shell from '../design/window-shell.json' with { type: 'json' };
 import { ConnectionNotice } from '../features/fans/ConnectionNotice.tsx';
 import { useFanControl } from '../features/fans/FanControlProvider.tsx';
 import { channelName, summarizeFans } from '../features/fans/model.ts';
@@ -38,6 +27,8 @@ import type {
   ThemePreference,
 } from '../platform/appearance.ts';
 import type { ChoicePreference } from '../platform/preferences.ts';
+import type { CaptionHover } from '../platform/webview.ts';
+import { AppNavigation, type AppPage, useNavigation } from './AppNavigation.tsx';
 import AppSettings from './AppSettings.tsx';
 import type { WindowControls } from './runtime.ts';
 
@@ -46,14 +37,19 @@ const FanDevices = lazy(() => import('../features/fans/FanDevices.tsx'));
 const SetupDrawer = lazy(() => import('../features/fans/SetupDrawer.tsx'));
 const HelpDrawer = lazy(() => import('../features/fans/HelpDrawer.tsx'));
 const { Text, Title } = Typography;
-type Page = 'home' | 'devices' | 'settings';
-const pageNames: Record<Page, string> = {
+const pageNames: Record<AppPage, string> = {
   home: '温度与风扇',
   devices: '风扇设置',
   settings: '设置',
 };
 const interactive =
   'button,a,input,select,textarea,[role="button"],[role="menuitem"],[contenteditable]';
+
+function initialPage(): AppPage {
+  const qa: unknown = Reflect.get(window, '__fanControllerUiQa');
+  const page: unknown = qa && typeof qa === 'object' ? Reflect.get(qa, 'page') : undefined;
+  return page === 'devices' || page === 'settings' ? page : 'home';
+}
 
 export default function AppShell({
   mode,
@@ -72,18 +68,21 @@ export default function AppShell({
 }) {
   const { state, controller } = useFanControl();
   const { message } = App.useApp();
-  const [page, setPage] = useState<Page>('home');
+  const [page, setPage] = useState<AppPage>(initialPage);
   const [setup, setSetup] = useState(false);
   const [help, setHelp] = useState(false);
   const [initialClose] = useState(() => closePreference.read());
   const [initialNavigation] = useState(() => navigationPreference.read());
   const [closeBehavior, setCloseBehavior] = useState(initialClose.value);
-  const [navigation, setNavigation] = useState(initialNavigation.value);
-  const [collapsed, setCollapsed] = useState(
-    () =>
-      initialNavigation.value === 'collapsed' || window.matchMedia('(max-width: 1000px)').matches,
-  );
+  // The established expanded/collapsed preference now means pinned/unpinned.
+  // Hover, focus and drawer state are never written to storage.
+  const [pinned, setPinned] = useState(initialNavigation.value === 'expanded');
+  const [narrow, setNarrow] = useState(() => window.matchMedia('(max-width: 699px)').matches);
+  const [drawer, setDrawer] = useState(false);
+  const drawerTrigger = useRef<HTMLButtonElement>(null);
+  const { state: navigation, root: sidebarRoot } = useNavigation(pinned, narrow);
   const [maximized, setMaximized] = useState(false);
+  const [captionHover, setCaptionHover] = useState<CaptionHover>('none');
   const snapshot = state.snapshot;
   const frame = snapshot?.Snapshot;
   const summary = snapshot ? summarizeFans(snapshot) : undefined;
@@ -95,20 +94,26 @@ export default function AppShell({
   }, [initialClose, initialNavigation, message]);
   useEffect(() => windows.setCloseBehavior(closeBehavior), [closeBehavior, windows]);
   useEffect(() => windows.subscribeWindowState(setMaximized), [windows]);
+  useEffect(() => windows.subscribeCaptionHover(setCaptionHover), [windows]);
   useEffect(() => {
-    const media = window.matchMedia('(max-width: 1000px)');
-    const update = () => setCollapsed(media.matches || navigation === 'collapsed');
+    const media = window.matchMedia('(max-width: 699px)');
+    const update = () => {
+      setNarrow(media.matches);
+      if (!media.matches) setDrawer(false);
+    };
     media.addEventListener('change', update);
     return () => media.removeEventListener('change', update);
-  }, [navigation]);
+  }, []);
   const saveIssue = (issue: string | undefined) => {
     if (issue) void message.warning(issue);
   };
-  const toggleNavigation = () => {
-    const next = collapsed ? 'expanded' : 'collapsed';
-    setCollapsed(!collapsed);
-    setNavigation(next);
-    saveIssue(navigationPreference.write(next));
+  const togglePin = () => {
+    setPinned(!pinned);
+    saveIssue(navigationPreference.write(pinned ? 'collapsed' : 'expanded'));
+  };
+  const choosePage = (next: AppPage) => {
+    setPage(next);
+    setDrawer(false);
   };
   const chooseCloseBehavior = (next: CloseBehavior) => {
     setCloseBehavior(next);
@@ -158,40 +163,17 @@ export default function AppShell({
             width={24}
             height={24}
           />
-          <Text strong className="brand-name">
-            FanController
-          </Text>
+          <Text className="brand-name">FanController</Text>
         </div>
         <div className="header-actions">
-          {frame?.Demo && (
-            <Tooltip title="使用模拟读数，操作只影响演示风扇">
-              <Tag color="warning">演示模式</Tag>
-            </Tooltip>
-          )}
-          <Badge
-            className="connection-status"
-            status={
-              connected ? 'success' : state.connection.kind === 'failed' ? 'error' : 'processing'
-            }
-            text={
-              <Text type="secondary">
-                {connected
-                  ? '每秒更新'
-                  : state.connection.kind === 'connecting'
-                    ? '正在检测'
-                    : state.connection.kind === 'reconnecting'
-                      ? '正在重新连接'
-                      : '读数已暂停'}
-              </Text>
-            }
-          />
           {windows.desktop && (
             <Space size={0} className="window-actions">
               <Button
                 type="text"
                 aria-label="最小化"
+                className={captionHover === 'minimize' ? 'caption-native-hover' : undefined}
                 title="最小化到任务栏"
-                icon={<MinusOutlined aria-hidden="true" />}
+                icon={<WindowGlyph kind="minimize" />}
                 onClick={() => windows.act('minimize')}
               />
               <Button
@@ -199,21 +181,18 @@ export default function AppShell({
                 aria-label={maximized ? '还原窗口' : '最大化窗口'}
                 title={maximized ? '还原窗口' : '最大化窗口'}
                 data-testid="window-maximize"
-                icon={
-                  maximized ? (
-                    <CompressOutlined aria-hidden="true" />
-                  ) : (
-                    <ExpandOutlined aria-hidden="true" />
-                  )
-                }
+                className={captionHover === 'maximize' ? 'caption-native-hover' : undefined}
+                icon={<WindowGlyph kind={maximized ? 'restore' : 'maximize'} />}
                 onClick={() => windows.act('maximize')}
               />
               <Button
                 type="text"
                 aria-label="关闭窗口"
                 title={closeBehavior === 'tray' ? '关闭到托盘，继续调节风扇' : '恢复原设置并退出'}
-                className="window-close"
-                icon={<CloseOutlined aria-hidden="true" />}
+                className={
+                  captionHover === 'close' ? 'window-close caption-native-hover' : 'window-close'
+                }
+                icon={<WindowGlyph kind="close" />}
                 onClick={() => windows.act('close')}
               />
             </Space>
@@ -222,86 +201,66 @@ export default function AppShell({
       </Layout.Header>
       <Layout className="app-body">
         <Layout.Sider
-          className="app-sidebar"
-          width={224}
-          collapsedWidth={56}
-          collapsed={collapsed}
+          className="sidebar-rail"
+          width={pinned && !narrow ? shell.sidebar.expandedWidth : shell.sidebar.collapsedWidth}
           trigger={null}
           theme={mode}
+          aria-label="导航"
         >
-          <div className="sidebar-toggle">
-            <Tooltip title={collapsed ? '展开导航' : '折叠导航'} placement="right">
-              <Button
-                type="text"
-                aria-label={collapsed ? '展开导航' : '折叠导航'}
-                aria-expanded={!collapsed}
-                icon={
-                  collapsed ? (
-                    <MenuUnfoldOutlined aria-hidden="true" />
-                  ) : (
-                    <MenuFoldOutlined aria-hidden="true" />
-                  )
-                }
-                onClick={toggleNavigation}
-              />
-            </Tooltip>
-          </div>
-          <Menu
-            className="sidebar-menu"
-            mode="inline"
-            inlineCollapsed={collapsed}
-            theme={mode}
-            selectedKeys={page === 'settings' ? [] : [page]}
-            onClick={({ key }) => {
-              if (key === 'home' || key === 'devices') setPage(key);
-            }}
-            items={[
-              {
-                key: 'home',
-                icon: <AppstoreOutlined aria-hidden="true" />,
-                title: '散热概览',
-                label: <span data-testid="home-menu">散热概览</span>,
-              },
-              {
-                key: 'devices',
-                icon: <SlidersOutlined aria-hidden="true" />,
-                title: '风扇设置',
-                label: <span data-testid="advanced-menu">风扇设置</span>,
-              },
-            ]}
-          />
-          <div className="sidebar-bottom">
-            <Menu
-              className="sidebar-menu"
-              mode="inline"
-              inlineCollapsed={collapsed}
-              theme={mode}
-              selectedKeys={page === 'settings' ? ['settings'] : []}
-              onClick={({ key }) => (key === 'settings' ? setPage('settings') : setHelp(true))}
-              items={[
-                {
-                  key: 'help',
-                  icon: <QuestionCircleOutlined aria-hidden="true" />,
-                  title: '使用帮助',
-                  label: '使用帮助',
-                },
-                {
-                  key: 'settings',
-                  icon: <SettingOutlined aria-hidden="true" />,
-                  title: '设置',
-                  label: <span data-testid="app-settings">设置</span>,
-                },
-              ]}
+          <div
+            ref={sidebarRoot}
+            className="app-sidebar"
+            data-expanded={navigation.expanded}
+            data-pinned={pinned}
+            data-floating={!pinned && navigation.expanded}
+          >
+            <AppNavigation
+              page={page}
+              expanded={navigation.expanded}
+              pinned={pinned}
+              onPage={choosePage}
+              onHelp={() => setHelp(true)}
+              onPin={togglePin}
             />
           </div>
         </Layout.Sider>
-        <Layout.Content className="main-scroll">
-          <main className="main-content">
-            <div className="page-heading">
-              <Title level={3}>{pageNames[page]}</Title>
+        <Layout.Content className="main-area">
+          <div className="content-toolbar">
+            <div className="toolbar-leading">
+              {narrow && (
+                <Button
+                  ref={drawerTrigger}
+                  type="text"
+                  className="navigation-drawer-trigger"
+                  aria-label="展开导航"
+                  aria-expanded={drawer}
+                  icon={<PanelLeft aria-hidden="true" />}
+                  onClick={() => setDrawer(true)}
+                />
+              )}
+              <Title level={2}>{pageNames[page]}</Title>
+            </div>
+            <div className="toolbar-actions">
+              {frame?.Demo && (
+                <Tooltip title="使用模拟读数，操作只影响演示风扇">
+                  <Tag color="warning">演示模式</Tag>
+                </Tooltip>
+              )}
+              <span className="connection-status" data-status={state.connection.kind}>
+                <span className="status-dot" aria-hidden="true" />
+                <span className="connection-label">
+                  {connected
+                    ? '每秒更新'
+                    : state.connection.kind === 'connecting'
+                      ? '正在检测'
+                      : state.connection.kind === 'reconnecting'
+                        ? '正在重新连接'
+                        : '读数已暂停'}
+                </span>
+              </span>
               {page === 'devices' && (
                 <Button
-                  icon={<ReloadOutlined aria-hidden="true" />}
+                  icon={<RotateCw aria-hidden="true" />}
                   loading={state.busy === 'rescan'}
                   disabled={Boolean(state.busy) || !connected}
                   onClick={() => {
@@ -312,69 +271,101 @@ export default function AppShell({
                 </Button>
               )}
             </div>
-            <ConnectionNotice />
-            {page === 'settings' ? (
-              <AppSettings
-                themePreference={themePreference}
-                onTheme={onTheme}
-                closeBehavior={closeBehavior}
-                onCloseBehavior={chooseCloseBehavior}
-                windows={windows}
-                busy={Boolean(state.busy)}
-                onHelp={() => setHelp(true)}
-              />
-            ) : (
-              <>
-                {!snapshot &&
-                  (state.connection.kind === 'connecting' ? (
-                    loading
-                  ) : (
-                    <Card>
-                      <Empty description="尚未读取到设备状态" />
-                    </Card>
-                  ))}
-                {summary?.needsSetup && (
-                  <Alert
-                    className="setup-alert"
-                    type="info"
-                    showIcon
-                    title="启用主板访问，检测受支持的 CPU 和机箱风扇"
-                    action={
-                      <Button
-                        disabled={!connected || Boolean(state.busy)}
-                        onClick={() => setSetup(true)}
-                      >
-                        启用主板访问
-                      </Button>
-                    }
-                  />
-                )}
-                {snapshot && summary && summary.abnormal.length > 0 && (
-                  <Alert
-                    type="warning"
-                    showIcon
-                    title="风扇保护与故障"
-                    description={summary.abnormal
-                      .map(
-                        (channel) =>
-                          `${channelName(channel, snapshot)}：${channel.Error ?? channel.Status}`,
-                      )
-                      .join('；')}
-                    action={<Button onClick={() => setPage('devices')}>查看详情</Button>}
-                  />
-                )}
-                <Suspense fallback={loading}>
-                  {snapshot &&
-                    (page === 'home' ? (
-                      <FanOverview onDevices={() => setPage('devices')} />
+          </div>
+          <div className="main-scroll">
+            <main className="main-content">
+              <ConnectionNotice />
+              {page === 'settings' ? (
+                <AppSettings
+                  themePreference={themePreference}
+                  onTheme={onTheme}
+                  closeBehavior={closeBehavior}
+                  onCloseBehavior={chooseCloseBehavior}
+                  windows={windows}
+                  busy={Boolean(state.busy)}
+                  onHelp={() => setHelp(true)}
+                />
+              ) : (
+                <>
+                  {!snapshot &&
+                    (state.connection.kind === 'connecting' ? (
+                      loading
                     ) : (
-                      <FanDevices />
+                      <Card>
+                        <Empty description="尚未读取到设备状态" />
+                      </Card>
                     ))}
-                </Suspense>
-              </>
-            )}
-          </main>
+                  {summary?.needsSetup && (
+                    <Alert
+                      className="setup-alert"
+                      type="info"
+                      showIcon
+                      title="启用主板访问，检测受支持的 CPU 和机箱风扇"
+                      action={
+                        <Button
+                          disabled={!connected || Boolean(state.busy)}
+                          onClick={() => setSetup(true)}
+                        >
+                          启用主板访问
+                        </Button>
+                      }
+                    />
+                  )}
+                  {snapshot && summary && summary.abnormal.length > 0 && (
+                    <Alert
+                      type="warning"
+                      showIcon
+                      title="风扇保护与故障"
+                      description={summary.abnormal
+                        .map(
+                          (channel) =>
+                            `${channelName(channel, snapshot)}：${channel.Error ?? channel.Status}`,
+                        )
+                        .join('；')}
+                      action={<Button onClick={() => setPage('devices')}>查看详情</Button>}
+                    />
+                  )}
+                  <Suspense fallback={loading}>
+                    {snapshot &&
+                      (page === 'home' ? (
+                        <FanOverview onDevices={() => setPage('devices')} />
+                      ) : (
+                        <FanDevices />
+                      ))}
+                  </Suspense>
+                </>
+              )}
+            </main>
+          </div>
         </Layout.Content>
+        {narrow && (
+          <Drawer
+            rootClassName="navigation-drawer"
+            placement="left"
+            size={shell.sidebar.expandedWidth}
+            open={drawer}
+            onClose={() => setDrawer(false)}
+            afterOpenChange={(open) => {
+              if (!open) drawerTrigger.current?.focus();
+            }}
+            getContainer={false}
+            closeIcon={null}
+            destroyOnHidden
+          >
+            <AppNavigation
+              drawer
+              page={page}
+              expanded
+              pinned={pinned}
+              onPage={choosePage}
+              onHelp={() => {
+                setDrawer(false);
+                setHelp(true);
+              }}
+              onPin={togglePin}
+            />
+          </Drawer>
+        )}
       </Layout>
       <Suspense fallback={null}>
         {setup && <SetupDrawer open onClose={() => setSetup(false)} />}

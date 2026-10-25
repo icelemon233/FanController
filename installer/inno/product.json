@@ -1,0 +1,21 @@
+{
+  "Name": "FanController",
+  "Description": "按温度调节 CPU、机箱和 GPU 风扇",
+  "Kind": "fan",
+  "Id": "cinna-fanCon",
+  "Executable": "FanController.exe",
+  "UserFolder": "cinna-fanCon",
+  "AppUserModelId": "FanController",
+  "MinimumWindows": "10.0.10240",
+  "Icon": "native/assets/app.ico",
+  "BrandImage": "docs/brand/cinna-app-icon.png",
+  "ShortcutIcon": "FanController.exe",
+  "Bootstrapper": ".deps/MicrosoftEdgeWebview2Setup.exe",
+  "DataDirectory": "{localappdata}\\cinna-fanCon",
+  "LegacyKey": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\cinna-fanCon",
+  "InstallingMutex": "Local\\cinna-fanCon.Installing",
+  "RunningMutex": "Local\\cinna-fanCon.Running",
+  "WelcomeText": "按温度调整支持的 CPU、机箱和 GPU 风扇。%n%n需要 Windows 10/11 x64 和 .NET Framework 4.8；缺少 WebView2 时会联网安装。启动应用后不会自动接管风扇。",
+  "ClosePrompt": "FanController 正在运行。继续后会请求正常退出，等待风扇恢复和后台服务结束。取消可继续使用当前版本。",
+  "LegacyFiles": ["Uninstall.exe", "cinna-fanCon.exe", "cinna-fanCon.exe.config"]
+}

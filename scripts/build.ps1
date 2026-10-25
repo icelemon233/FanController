@@ -1,8 +1,8 @@
-param([switch]$SkipFrontend)
+param([switch]$SkipFrontend,[string]$OutputDirectory)
 $ErrorActionPreference='Stop'
 $projectRoot=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $source=Join-Path $projectRoot 'native'
-$output=Join-Path $projectRoot 'artifacts\app'
+$output=if($OutputDirectory){[IO.Path]::GetFullPath($OutputDirectory)}else{Join-Path $projectRoot 'artifacts\app'}
 $frontend=Join-Path $projectRoot 'frontend'
 & (Join-Path $PSScriptRoot 'create-icon.ps1')
 & (Join-Path $PSScriptRoot 'restore-dependencies.ps1') -OutputDirectory $output
@@ -26,8 +26,8 @@ $arguments=@('/nologo','/target:winexe','/platform:x64','/optimize+','/codepage:
 $workerArguments=$arguments+@('/main:CinnaFanCon.WorkerProgram',('/out:'+(Join-Path $output 'FanController.Worker.exe')))
 & $compiler @workerArguments @common (Join-Path $source 'WorkerProgram.cs')
 if($LASTEXITCODE -ne 0){throw 'Worker compilation failed.'}
-$hostArguments=$arguments+@('/main:CinnaFanCon.AppProgram',('/out:'+(Join-Path $output 'FanController.exe')),('/resource:'+(Join-Path $source 'assets\app.ico')+',CinnaFanCon.AppIcon'),'/r:System.Drawing.dll','/r:System.Windows.Forms.dll','/r:System.Xaml.dll',('/r:'+(Join-Path $wpf 'PresentationCore.dll')),('/r:'+(Join-Path $wpf 'PresentationFramework.dll')),('/r:'+(Join-Path $wpf 'WindowsBase.dll')),('/r:'+(Join-Path $output 'Microsoft.Web.WebView2.Core.dll')),('/r:'+(Join-Path $output 'Microsoft.Web.WebView2.Wpf.dll')))
-$hostSources=@('WorkerClient.cs','TrayContextMenu.cs','BrowserWindow.cs','AppProgram.cs') | ForEach-Object {Join-Path $source $_}
+$hostArguments=$arguments+@('/main:CinnaFanCon.AppProgram',('/out:'+(Join-Path $output 'FanController.exe')),('/resource:'+(Join-Path $source 'assets\app.ico')+',CinnaFanCon.AppIcon'),('/resource:'+(Join-Path $frontend 'src\design\window-shell.json')+',CinnaFanCon.WindowShell'),'/r:System.Drawing.dll','/r:System.Windows.Forms.dll','/r:System.Xaml.dll',('/r:'+(Join-Path $wpf 'PresentationCore.dll')),('/r:'+(Join-Path $wpf 'PresentationFramework.dll')),('/r:'+(Join-Path $wpf 'WindowsBase.dll')),('/r:'+(Join-Path $output 'Microsoft.Web.WebView2.Core.dll')),('/r:'+(Join-Path $output 'Microsoft.Web.WebView2.Wpf.dll')))
+$hostSources=@('WorkerClient.cs','TrayContextMenu.cs','WindowFrameContract.cs','UiQaOptions.cs','BrowserWindow.cs','AppProgram.cs') | ForEach-Object {Join-Path $source $_}
 & $compiler @hostArguments @common @hostSources
 if($LASTEXITCODE -ne 0){throw 'Desktop compilation failed.'}
 foreach($name in @('FanController.exe.config','FanController.Worker.exe.config')){Copy-Item -LiteralPath (Join-Path $source 'cinna-fanCon.exe.config') -Destination (Join-Path $output $name) -Force}

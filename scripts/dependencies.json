@@ -4,11 +4,6 @@
     "url": "https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/releases/download/v0.9.6/LibreHardwareMonitor.zip",
     "sha256": "086D9F1B5A99E643EDC2CFAAAC16051685B551E4C5AC0B32A57C58C0E529C001"
   },
-  "InstallerNSIS": {
-    "version": "3.13",
-    "url": "https://downloads.sourceforge.net/project/nsis/NSIS%203/3.13/nsis-3.13.zip",
-    "sha256": "BA63DFFC4410EE89193E1CB5A41989991BD77C61068DA17E3156D136B7B0B3D8"
-  },
   "WebView2Bootstrapper": {
     "version": "2026-10-22",
     "url": "https://go.microsoft.com/fwlink/p/?LinkId=2124703",

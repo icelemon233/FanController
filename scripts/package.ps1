@@ -1,3 +1,4 @@
+param([string]$OutputFile)
 $ErrorActionPreference='Stop'
 $projectRoot=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $metadata=Get-Content -LiteralPath (Join-Path $projectRoot 'version.json') -Raw | ConvertFrom-Json
@@ -18,7 +19,8 @@ foreach($directory in @('docs','third-party')){Copy-Item -LiteralPath (Join-Path
 foreach($document in @('README.md','README.zh-CN.md')){Copy-Item -LiteralPath (Join-Path $projectRoot $document) -Destination $stage}
 $dist=Join-Path $projectRoot 'dist'
 New-Item -ItemType Directory -Force -Path $dist | Out-Null
-$archive=Join-Path $dist ('FanController-v'+$metadata.version+'-windows-x64.zip')
+$archive=if($OutputFile){[IO.Path]::GetFullPath($OutputFile)}else{Join-Path $dist ('FanController-v'+$metadata.version+'-windows-x64.zip')}
+New-Item -ItemType Directory -Force -Path (Split-Path -Parent $archive) | Out-Null
 Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $archive -CompressionLevel Optimal -Force
 $hash=Get-FileHash -LiteralPath $archive -Algorithm SHA256
 ($hash.Hash.ToLowerInvariant()+'  '+[IO.Path]::GetFileName($archive)) | Set-Content -LiteralPath ($archive+'.sha256') -Encoding ascii

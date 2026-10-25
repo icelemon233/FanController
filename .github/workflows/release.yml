@@ -1,87 +1,52 @@
-name: Publish Windows release
-
+name: Publish verified Windows release
 on:
   push:
-    tags: ["v*"]
+    tags: ['v*']
   workflow_dispatch:
-
 permissions:
   contents: read
-
 concurrency:
-  group: release-${{ github.ref }}
+  group: verified-windows-release
   cancel-in-progress: false
-
 jobs:
-  windows-release:
+  publish:
     if: github.ref_type == 'tag'
     runs-on: windows-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+      - uses: actions/setup-node@v4
         with:
-          node-version: 24.19.0
-      - name: Verify version tag and notes
-        shell: pwsh
-        run: |
-          $metadata = Get-Content version.json -Raw | ConvertFrom-Json
-          if ($env:GITHUB_REF_NAME -ne ('v' + $metadata.version)) {
-            throw 'The release tag must match version.json.'
-          }
-          if (-not (Test-Path -LiteralPath ('docs/releases/' + $env:GITHUB_REF_NAME + '.md'))) {
-            throw 'The versioned release notes are missing.'
-          }
+          node-version: '24'
       - run: npm install --global --ignore-scripts pnpm@11.25.0
-      - name: Build and check application
-        run: ./scripts/build.ps1
-        shell: pwsh
-      - name: Test core and worker lifecycle
+      - name: Build and test application
         shell: pwsh
         run: |
+          ./scripts/build.ps1
           ./scripts/test.ps1
           ./scripts/test-worker-connection.ps1
-      - name: Build installer and portable archive
-        run: ./scripts/build-installer.ps1
-        shell: pwsh
-      - name: Test installer shutdown ordering
+          ./scripts/build-installer.ps1
+          ./scripts/ensure-ci-webview.ps1
+      - name: Validate isolated installation and recovery
         shell: pwsh
         run: |
-          foreach ($scenario in @('Ready', 'Refuse', 'WrongPath', 'Silent', 'Idle')) {
-            ./scripts/test-installer-update.ps1 -Scenario $scenario
-          }
-          ./scripts/test-installer-update.ps1 -Scenario Ready -Tray
-          ./scripts/test-installer-update.ps1 -Scenario Ready -Legacy
-          foreach ($title in @('Older','Legacy')) {
-            ./scripts/test-installer-update.ps1 -Scenario Ready -Legacy -TitleVersion $title
-          }
-      - name: Publish verified release files
+          $version = (Get-Content version.json -Raw | ConvertFrom-Json).version
+          if ($env:GITHUB_REF_NAME -ne "v$version") { throw 'Tag and application version differ' }
+          ./installer/inno/test.ps1 -PayloadDirectory artifacts/app -Version $version
+          ./installer/inno/test-custom.ps1 -PayloadDirectory artifacts/app -Version $version
+      - name: Publish and retain the latest version
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
         run: |
-          $metadata = Get-Content version.json -Raw | ConvertFrom-Json
-          $tag = $env:GITHUB_REF_NAME
-          $prefix = 'dist/FanController-' + $tag + '-windows-x64'
-          $assets = @("${prefix}-setup.exe", "${prefix}-setup.exe.sha256", "${prefix}.zip", "${prefix}.zip.sha256")
-          foreach ($asset in $assets) {
-            if (-not (Test-Path -LiteralPath $asset)) { throw ('Missing release asset: ' + $asset) }
-          }
-          $sourceCommit = (& git rev-parse HEAD).Trim()
-          $manifestFiles = foreach ($binary in @($assets[0], $assets[2])) {
-            $file = Get-Item -LiteralPath $binary
-            [ordered]@{ name = $file.Name; sha256 = (Get-FileHash -LiteralPath $binary -Algorithm SHA256).Hash.ToLowerInvariant(); bytes = $file.Length }
-          }
-          $manifest = [ordered]@{ app = $metadata.name; developer = $metadata.developer; series = $metadata.series; version = $metadata.version; sourceCommit = $sourceCommit; files = @($manifestFiles) }
-          $manifestPath = 'dist/FanController-' + $tag + '-release.json'
-          $manifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $manifestPath -Encoding utf8NoBOM
-          $assets += $manifestPath
-          $releaseArgs = @('release', 'create', $tag, '--verify-tag', '--title', ('FanController ' + $tag), '--notes-file', ('docs/releases/' + $tag + '.md'), '--target', $sourceCommit)
-          if ($metadata.channel -eq 'preview') { $releaseArgs += '--prerelease' }
-          & gh @releaseArgs @assets
-          if ($LASTEXITCODE -ne 0) { throw 'Release creation or upload failed; existing releases are never overwritten.' }
+          $version = (Get-Content version.json -Raw | ConvertFrom-Json).version
+          $prefix = "dist/FanController-v$version-windows-x64"
+          git archive --format=zip --prefix=FanController/ -o "dist/FanController-v$version-Source.zip" HEAD
+          if ($LASTEXITCODE -ne 0) { throw 'Source archive failed' }
+          $files = @("$prefix-setup.exe", "$prefix-setup.exe.sha256", "$prefix-setup.exe.build.json", "$prefix.zip", "$prefix.zip.sha256", "dist/FanController-v$version-Source.zip")
+          ./scripts/publish-verified-release.ps1 -Version $version -Title "FanController $version" -NotesFile "docs/releases/v$version.md" -Files $files -KeepLatestOnly
