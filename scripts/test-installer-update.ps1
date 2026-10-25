@@ -51,7 +51,7 @@ try{
   $fanEventsFile=Join-Path $fanRunningRoot 'events.txt'
   $fanEvents=if(Test-Path -LiteralPath $fanEventsFile){[IO.File]::ReadAllText($fanEventsFile).Trim()}else{''}
   if($Scenario -in @('Ready','Idle')){
-    if($fanProcess.ExitCode -ne 0){throw "Setup failed: $($fanProcess.ExitCode). Inspect $fanQaRoot"}
+    if($fanProcess.ExitCode -ne 0){Get-Content -LiteralPath (Join-Path $fanQaRoot 'lifecycle.log') -Tail 65 | Write-Host;throw "Setup failed: $($fanProcess.ExitCode). Inspect $fanQaRoot"}
     if($Scenario -eq 'Ready'){
       $fanExitEvent=if($Legacy){'close-requested'}else{'exit-requested'}
       if(-not $fanApp.HasExited -or ($fanEvents -replace '\r?\n',',') -ne ($fanExitEvent+',worker-restored,host-exit')){throw 'Setup continued before normal fan restoration and host exit.'}
