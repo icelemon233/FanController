@@ -54,6 +54,7 @@ jobs:
         shell: pwsh
       - name: Test update shutdown
         run: |
+          ./scripts/ensure-ci-webview.ps1
           foreach ($scenario in @('Ready','Refuse','WrongPath','Silent','Idle')) {
             ./scripts/test-installer-update.ps1 -Scenario $scenario
           }
